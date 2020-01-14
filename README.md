@@ -1,2 +1,2 @@
 # WP4
-Compiler extension for the P4 Data Plane compiler
+Compiler extension for creating P4 Data Planes for OpenWRT.
