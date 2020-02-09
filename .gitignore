@@ -3,6 +3,6 @@ tests/*.c
 tests/*.h
 tests/*.o
 tests/*.p4i
-p4c-WP4
+p4c-wp4
 
 .DS_Store

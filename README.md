@@ -1,5 +1,5 @@
 # WP4
-Compiler extension for creating P4 Data Planes for OpenWRT.
+Compiler extension for creating Wireless P4 Data Planes for OpenWRT.
 
 ## Installation
 
@@ -30,15 +30,15 @@ sudo ldconfig # refresh shared library cache.`
 ### P4-16 Compiler
 First you need to follow the installation guide of [P4-16](https://github.com/p4lang/p4c/)
 When you have P4-16 compiler, then add this project as an extension.
-Assuming you have P4-16 at your dir  ~/p4c/, to setup p4c-WP4:
+Assuming you have P4-16 at your dir  ~/p4c/, to setup p4c-wp4:
 ```bash
 cd ~/p4c/
 mkdir extensions
 cd extensions
-git clone https://github.com/pzanna/p4c-WP4.git
-ln -s ~/p4c p4c-WP4/p4c
+git clone https://github.com/pzanna/p4c-wp4.git
+ln -s ~/p4c p4c-wp4/p4c
 ```
-Now that you have cloned p4c-WP4 at ~/p4c/extensions/p4c-WP4, the next step is to
+Now that you have cloned p4c-WP4 at ~/p4c/extensions/p4c-wp4, the next step is to
 recompile p4c:
 ```bash
 cd ~/p4c/
@@ -47,11 +47,11 @@ cd build/
 cmake ..
 make
 ```
-This generates a p4c-zodiacfx binary in ~/p4c/build.
+This generates a p4c-wp4 binary in ~/p4c/build.
 Next create a soft link to the binary:
 ```bash
 cd ~/p4c/extensions/p4c-wp4
-ln -s ~/p4c/build/p4c-WP4 p4c-WP4
+ln -s ~/p4c/build/p4c-wp4 p4c-wp4
 ```
 
 ### Current Status
