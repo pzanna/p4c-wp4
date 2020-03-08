@@ -27,11 +27,15 @@ void wp4Target::emitTableLookup(Util::SourceCodeBuilder* builder, cstring tblNam
 
 void wp4Target::emitIncludes(Util::SourceCodeBuilder* builder) const {
      builder->append(
-         "#include <asf.h>\n"
-         "#include <string.h>\n"
-         "#include <stdlib.h>\n"
-         "#include \"common.h\"\n"
-         "#include \"switch.h\"\n"
+         "#include <linux/module.h>    // included for all kernel modules\n"
+         "#include <linux/kernel.h>    // included for KERN_INFO\n"
+         "#include <linux/init.h>      // included for __init and __exit macros\n"
+         "#include <linux/fs.h>\n"
+         "#include <linux/debugfs.h>\n"
+         "#include <linux/slab.h>\n"
+         "#include <linux/mm.h>\n"  
+         "#include <linux/skbuff.h>\n"
+         "#include <linux/netdevice.h>\n"
          "\n");
 }
 
@@ -40,3 +44,9 @@ void wp4Target::emitMain(Util::SourceCodeBuilder* builder, cstring functionName,
 }
 
 }  // namespace WP4
+
+
+
+
+
+

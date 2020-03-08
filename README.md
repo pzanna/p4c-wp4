@@ -47,11 +47,11 @@ cd build/
 cmake ..
 make
 ```
-This generates a p4c-wp4 binary in ~/p4c/build.
-Next create a soft link to the binary:
+This generates a p4c-wp4 binary in ~/p4c/build/extensions/p4c-wp4.
+To build the test P4 program:
 ```bash
-cd ~/p4c/extensions/p4c-wp4
-ln -s ~/p4c/build/p4c-wp4 p4c-wp4
+cd ~/p4c/extensions/p4c-wp4/tests
+~/p4c/build/extensions/p4c-wp4/p4c-wp4 test_wp4.p4 -o wp4-p4.c
 ```
 
 ### Current Status
