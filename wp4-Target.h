@@ -38,6 +38,7 @@ class Target {
     virtual void emitLicense(Util::SourceCodeBuilder* builder, cstring license) const = 0;
     virtual void emitCodeSection(Util::SourceCodeBuilder* builder, cstring sectionName) const = 0;
     virtual void emitIncludes(Util::SourceCodeBuilder* builder) const = 0;
+    virtual void emitModule(Util::SourceCodeBuilder* builder) const = 0;
     virtual void emitTableLookup(Util::SourceCodeBuilder* builder, cstring tblName, cstring key, cstring value) const = 0;
     virtual void emitMain(Util::SourceCodeBuilder* builder, cstring functionName, cstring argName, cstring packetSize) const = 0;
     virtual cstring dataOffset(cstring base) const = 0;
@@ -54,6 +55,7 @@ class wp4Target : public Target {
     void emitLicense(Util::SourceCodeBuilder*, cstring) const override {};
     void emitCodeSection(Util::SourceCodeBuilder*, cstring) const override {}
     void emitIncludes(Util::SourceCodeBuilder* builder) const override;
+    void emitModule(Util::SourceCodeBuilder* builder) const override;
     void emitTableLookup(Util::SourceCodeBuilder* builder, cstring tblName, cstring key, cstring value) const override;
     void emitMain(Util::SourceCodeBuilder* builder, cstring functionName, cstring argName, cstring packetSize) const override;
     cstring dataOffset(cstring base) const override { return base; }

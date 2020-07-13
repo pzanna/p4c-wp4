@@ -70,12 +70,11 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
 
     builder->target->emitIncludes(builder);
     emitPreamble(builder);
-  
-    builder->newline();
+    builder->target->emitModule(builder);
     builder->emitIndent(); 
     builder->target->emitCodeSection(builder, functionName);
     builder->emitIndent();
-    builder->target->emitMain(builder, "packet_in", model.CPacketName.str(), "wp4_ul_size");
+    builder->target->emitMain(builder, "wp4_packet_in", model.CPacketName.str(), "wp4_ul_size");
     builder->blockStart();
 
     builder->newline();
@@ -98,9 +97,16 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
 
     builder->appendFormat("\n// Start of Deparser\n");
     deparser->emit(builder);
-    builder->appendFormat("gmac_write(%s, %s, %s.%s);", model.CPacketName.str(), inPacketLengthVar.c_str(),getSwitch()->outputMeta->name.name, WP4Model::instance.outputMetadataModel.outputPort.str());
+    builder->appendFormat("    return;");
+    //builder->appendFormat("gmac_write(%s, %s, %s.%s);", model.CPacketName.str(), inPacketLengthVar.c_str(),getSwitch()->outputMeta->name.name, WP4Model::instance.outputMetadataModel.outputPort.str());
     builder->newline();
     builder->blockEnd(true);  // end of function
+    builder->appendFormat("\n// Kernel module functions\n");
+    builder->append(
+        "EXPORT_SYMBOL(wp4_packet_in);\n"
+        "\n"
+        "module_init(wp4_init);\n"
+        "module_exit(wp4_exit);\n");
     builder->target->emitLicense(builder, license);
 }
 
@@ -110,7 +116,7 @@ void WP4Program::emitH(CodeBuilder* builder, cstring) {
     builder->appendLine("#define _P4_GEN_HEADER_");
     builder->target->emitIncludes(builder);
     builder->newline();
-    builder->appendLine("void packet_in(uint8_t *p_uc_data, uint16_t wp4_ul_size, uint8_t port);");
+    builder->appendLine("void wp4_packet_in(uint8_t *p_uc_data, uint16_t wp4_ul_size, uint8_t port);");
     builder->newline();
     emitTypes(builder);
     control->emitTableTypes(builder);
@@ -155,7 +161,6 @@ void WP4Program::emitTypes(CodeBuilder* builder) {
 
 void WP4Program::emitPreamble(CodeBuilder* builder) {
     builder->emitIndent();
-    builder->newline();
     builder->appendLine("#define WP4_MASK(t, w) ((((t)(1)) << (w)) - (t)1)");
     builder->appendLine("#define BYTES(w) ((w) / 8)");
     builder->newline();

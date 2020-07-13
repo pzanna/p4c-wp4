@@ -6,3 +6,4 @@ tests/*.p4i
 p4c-wp4
 
 .DS_Store
+p4c
