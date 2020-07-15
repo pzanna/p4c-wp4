@@ -52,7 +52,7 @@ class WP4Program : public WP4Object {
     cstring packetStartVar, byteVar;
     cstring errorEnum;
     cstring license = "GPL";  // TODO: this should be a compiler option probably
-    cstring arrayIndexType = "uint32_t";
+    cstring arrayIndexType = "u32";
     cstring inPacketLengthVar, outHeaderLengthVar;
 
     virtual bool build();  // return 'true' on success
@@ -65,7 +65,7 @@ class WP4Program : public WP4Object {
         offsetVar = WP4Model::reserved("packetOffsetInBits");
         packetStartVar = WP4Model::reserved("packetStart");
         zeroKey = WP4Model::reserved("zero");
-        functionName = WP4Model::reserved("zfx_switch");
+        functionName = WP4Model::reserved("wp4_switch");
         byteVar = WP4Model::reserved("byte");
         inPacketLengthVar = WP4Model::reserved("ul_size");
         outHeaderLengthVar = WP4Model::reserved("outHeaderLength");

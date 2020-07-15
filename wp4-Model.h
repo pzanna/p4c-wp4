@@ -33,10 +33,10 @@ struct TableImpl_Model : public ::Model::Extern_Model {
 
 struct Switch_Model : public ::Model::Elem {
     Switch_Model() : Elem("wp4"),
-                     zfx_parser("prs"), zfx_switch("swtch"), zfx_deparser("deprs") {}
-    ::Model::Elem zfx_parser;
-    ::Model::Elem zfx_switch;
-    ::Model::Elem zfx_deparser;
+                     wp4_parser("prs"), wp4_switch("swtch"), wp4_deparser("deprs") {}
+    ::Model::Elem wp4_parser;
+    ::Model::Elem wp4_switch;
+    ::Model::Elem wp4_deparser;
 };
 
 struct InputMetadataModel : public ::Model::Type_Model {
@@ -68,7 +68,7 @@ class WP4Model : public ::Model::Model {
                   CPacketName("p_uc_data"),
                   packet("packet", P4::P4CoreLibrary::instance.packetIn, 0),
                   inputMetadataModel(), outputMetadataModel(),
-                  zfx_switch(), counterIndexType("uint32_t"), counterValueType("uint32_t")
+                  wp4_switch(), counterIndexType("u32"), counterValueType("u32")
     {}
 
  public:
@@ -80,7 +80,7 @@ class WP4Model : public ::Model::Model {
     ::Model::Param_Model   packet;
     InputMetadataModel inputMetadataModel;
     OutputMetadataModel outputMetadataModel;
-    Switch_Model           zfx_switch;
+    Switch_Model           wp4_switch;
     cstring counterIndexType;
     cstring counterValueType;
 

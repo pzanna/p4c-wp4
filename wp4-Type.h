@@ -65,7 +65,7 @@ class WP4BoolType : public WP4Type, public IHasWidth {
  public:
     WP4BoolType() : WP4Type(IR::Type_Boolean::get()) {}
     void emit(CodeBuilder* builder) override
-    { builder->append("uint8_t"); }
+    { builder->append("u8"); }
     void declare(CodeBuilder* builder, cstring id, bool asPointer) override;
     void emitInitializer(CodeBuilder* builder) override
     { builder->append("0"); }

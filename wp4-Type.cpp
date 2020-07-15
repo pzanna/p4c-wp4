@@ -97,23 +97,23 @@ unsigned WP4ScalarType::alignment() const {
     else if (width <= 64)
         return 8;
     else
-        // compiled as uint8_t*
+        // compiled as u8*
         return 1;
 }
 
 void WP4ScalarType::emit(CodeBuilder* builder) {
-    auto prefix = isSigned ? "int" : "uint";
+    auto prefix = isSigned ? "int" : "u";
 
     if (width <= 8)
-        builder->appendFormat("%s8_t", prefix);
+        builder->appendFormat("%s8", prefix);
     else if (width <= 16)
-        builder->appendFormat("%s16_t", prefix);
+        builder->appendFormat("%s16", prefix);
     else if (width <= 32)
-        builder->appendFormat("%s32_t", prefix);
+        builder->appendFormat("%s32", prefix);
     else if (width <= 64)
-        builder->appendFormat("%s64_t", prefix);
+        builder->appendFormat("%s64", prefix);
     else
-        builder->appendFormat("uint8_t*");
+        builder->appendFormat("u8*");
 }
 
 void
@@ -126,9 +126,9 @@ WP4ScalarType::declare(CodeBuilder* builder, cstring id, bool asPointer) {
         builder->append(id);
     } else {
         if (asPointer)
-            builder->append("uint8_t*");
+            builder->append("u8*");
         else
-            builder->appendFormat("uint8_t %s[%d]", id.c_str(), bytesRequired());
+            builder->appendFormat("u8 %s[%d]", id.c_str(), bytesRequired());
     }
 }
 

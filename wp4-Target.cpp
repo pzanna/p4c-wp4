@@ -41,24 +41,19 @@ void wp4Target::emitIncludes(Util::SourceCodeBuilder* builder) const {
 
 void wp4Target::emitModule(Util::SourceCodeBuilder* builder) const {
      builder->append(
-         "MODULE_LICENSE('GPL');\n"
-         "MODULE_AUTHOR('Paul Zanna');\n"
-         "MODULE_DESCRIPTION('WP4');\n"
-         "MODULE_VERSION('0.1');\n"
-         "\n"
          "static int __init wp4_init(void) {\n"
-         "  printk(KERN_INFO 'WP4: Loading WP4 LKM!\\n');\n"
-         "  return 0;\n"
+         "   printk(KERN_INFO \"WP4: Loading WP4 LKM!\\n\");\n"
+         "   return 0;\n"
          "}\n"
          "\n"
-         "static int __init wp4_exit(void) {\n"
-         "  printk(KERN_INFO 'WP4: Removing WP4 LKM!\\n');\n"
+         "static void __exit wp4_exit(void) {\n"
+         "   printk(KERN_INFO \"WP4: Removing WP4 LKM!\\n\");\n"
          "}\n"
          "\n");
 }
 
 void wp4Target::emitMain(Util::SourceCodeBuilder* builder, cstring functionName, cstring argName, cstring packetSize) const {
-     builder->appendFormat("void %s(uint8_t *%s, uint16_t %s, uint8_t port)", functionName.c_str(), argName.c_str(), packetSize);
+     builder->appendFormat("int %s(u8 *%s, u16 %s, u8 port)", functionName.c_str(), argName.c_str(), packetSize);
 }
 
 }  // namespace WP4

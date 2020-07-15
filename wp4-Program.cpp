@@ -38,21 +38,21 @@ bool WP4Program::build() {
         return false;
     }
 
-    auto pb = pack->getParameterValue(model.zfx_switch.zfx_parser.name)->to<IR::ParserBlock>();
+    auto pb = pack->getParameterValue(model.wp4_switch.wp4_parser.name)->to<IR::ParserBlock>();
     BUG_CHECK(pb != nullptr, "No parser block found");
     parser = new WP4Parser(this, pb, typeMap);
     bool success = parser->build();
     if (!success)
         return success;
 
-    auto cb = pack->getParameterValue(model.zfx_switch.zfx_switch.name)->to<IR::ControlBlock>();
+    auto cb = pack->getParameterValue(model.wp4_switch.wp4_switch.name)->to<IR::ControlBlock>();
     BUG_CHECK(cb != nullptr, "No control block found");
     control = new WP4Control(this, cb, parser->headers);
     success = control->build();
     if (!success)
         return success;
 
-    auto db = pack->getParameterValue(model.zfx_switch.zfx_deparser.name)->to<IR::ControlBlock>();
+    auto db = pack->getParameterValue(model.wp4_switch.wp4_deparser.name)->to<IR::ControlBlock>();
     BUG_CHECK(db != nullptr, "No deparser block found");
     deparser = new WP4Deparser(this, db, parser->headers);
     success = deparser->build();
@@ -65,10 +65,13 @@ bool WP4Program::build() {
 void WP4Program::emitC(CodeBuilder* builder, cstring header) {
     emitGeneratedComment(builder);
 
-    builder->appendFormat("#include \"%s\"", header.c_str());
+    builder->target->emitIncludes(builder);
     builder->newline();
 
-    builder->target->emitIncludes(builder);
+    builder->appendFormat("#include \"%s\"", header.c_str());
+    builder->newline();
+    builder->newline();
+
     emitPreamble(builder);
     builder->target->emitModule(builder);
     builder->emitIndent(); 
@@ -97,8 +100,7 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
 
     builder->appendFormat("\n// Start of Deparser\n");
     deparser->emit(builder);
-    builder->appendFormat("    return;");
-    //builder->appendFormat("gmac_write(%s, %s, %s.%s);", model.CPacketName.str(), inPacketLengthVar.c_str(),getSwitch()->outputMeta->name.name, WP4Model::instance.outputMetadataModel.outputPort.str());
+    builder->appendFormat("    return 0;");
     builder->newline();
     builder->blockEnd(true);  // end of function
     builder->appendFormat("\n// Kernel module functions\n");
@@ -106,7 +108,16 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
         "EXPORT_SYMBOL(wp4_packet_in);\n"
         "\n"
         "module_init(wp4_init);\n"
-        "module_exit(wp4_exit);\n");
+        "module_exit(wp4_exit);\n"
+        "\n"
+        "MODULE_LICENSE(\"GPL\");\n"
+        "MODULE_AUTHOR(\"");
+    builder->append(options.file);
+    builder->append(
+        "\");\n"
+        "MODULE_DESCRIPTION(\"WP4\");\n"
+        "MODULE_VERSION(\"0.1\");\n"
+        "\n");
     builder->target->emitLicense(builder, license);
 }
 
@@ -114,20 +125,21 @@ void WP4Program::emitH(CodeBuilder* builder, cstring) {
     emitGeneratedComment(builder);
     builder->appendLine("#ifndef _P4_GEN_HEADER_");
     builder->appendLine("#define _P4_GEN_HEADER_");
-    builder->target->emitIncludes(builder);
     builder->newline();
-    builder->appendLine("void wp4_packet_in(uint8_t *p_uc_data, uint16_t wp4_ul_size, uint8_t port);");
+    builder->appendLine("#include <linux/types.h>");
+    builder->newline();
+    builder->appendLine("int wp4_packet_in(u8 *p_uc_data, u16 wp4_ul_size, u8 port);");
     builder->newline();
     emitTypes(builder);
     control->emitTableTypes(builder);
     builder->newline();
-    builder->appendLine("static void init_tables() ");
-    builder->blockStart();
-    builder->emitIndent();
-    builder->appendFormat("u32 %s = 0;", zeroKey.c_str());
-    builder->newline();
-    control->emitTableInitializers(builder);
-    builder->blockEnd(true);
+    //builder->appendLine("static void init_tables() ");
+    //builder->blockStart();
+    //builder->emitIndent();
+    //builder->appendFormat("u32 %s = 0;", zeroKey.c_str());
+    //builder->newline();
+    //control->emitTableInitializers(builder);
+    //builder->blockEnd(true);
     builder->appendLine("#endif");
 }
 
@@ -169,10 +181,10 @@ void WP4Program::emitPreamble(CodeBuilder* builder) {
 void WP4Program::emitLocalVariables(CodeBuilder* builder) {
     builder->newline();
     builder->emitIndent();
-    builder->appendFormat("uint16_t %s = 0;", offsetVar); 
+    builder->appendFormat("u16 %s = 0;", offsetVar); 
     builder->newline();
     builder->emitIndent();
-    builder->appendFormat("uint8_t *%s = %s;", packetStartVar, model.CPacketName.str());    
+    builder->appendFormat("u8 *%s = %s;", packetStartVar, model.CPacketName.str());    
 
     builder->newline();
     builder->emitIndent();
