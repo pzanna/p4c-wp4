@@ -1,5 +1,5 @@
 # WP4
-Compiler extension for creating Wireless P4 Data Planes for OpenWRT.
+P4 Compiler extension for IEEE 802.11 Wireless Data Planes.
 
 ## Installation
 
