@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -125,6 +125,8 @@ void WP4Program::emitH(CodeBuilder* builder, cstring) {
     emitGeneratedComment(builder);
     builder->appendLine("#ifndef _P4_GEN_HEADER_");
     builder->appendLine("#define _P4_GEN_HEADER_");
+    builder->newline();
+    builder->appendLine("#define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))");
     builder->newline();
     builder->appendLine("#include <linux/types.h>");
     builder->newline();

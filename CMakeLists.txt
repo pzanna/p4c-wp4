@@ -1,4 +1,4 @@
-# Makefile for the ZODAICFX P4-16 back-end.
+# Makefile for the WP4 P4-16 back-end.
 # To be included in the main P4C compiler makefile
 
 configure_file("${CMAKE_CURRENT_SOURCE_DIR}/version.h.cmake"

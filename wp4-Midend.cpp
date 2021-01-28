@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,8 +35,8 @@ limitations under the License.
 #include "midend/local_copyprop.h"
 #include "midend/midEndLast.h"
 #include "midend/noMatch.h"
-#include "midend/removeExits.h"
 #include "midend/removeLeftSlices.h"
+#include "midend/removeMiss.h"
 #include "midend/removeParameters.h"
 #include "midend/removeSelectBooleans.h"
 #include "midend/simplifyKey.h"
@@ -63,54 +63,61 @@ class EnumOn32Bits : public P4::ChooseEnumRepresentation {
     { return 32; }
 };
 
-const IR::ToplevelBlock* MidEnd::run(WP4Options& options, const IR::P4Program* program) {
-    if (program == nullptr)
+const IR::ToplevelBlock* MidEnd::run(WP4Options& options, const IR::P4Program* program, std::ostream* outStream) {
+    if (program == nullptr && options.listMidendPasses == 0)
         return nullptr;
 
     bool isv1 = options.langVersion == CompilerOptions::FrontendVersion::P4_14;
     refMap.setIsV1(isv1);
     auto evaluator = new P4::EvaluatorPass(&refMap, &typeMap);
 
-    PassManager midEnd = {};
+    PassManager midEnd;
     if (options.loadIRFromJson == false) {
-        midEnd = {
-            new P4::ConvertEnums(&refMap, &typeMap, new EnumOn32Bits()),
-            new P4::ClearTypeMap(&typeMap),
-            new P4::EliminateNewtype(&refMap, &typeMap),
-            new P4::SimplifyControlFlow(&refMap, &typeMap),
-            new P4::RemoveActionParameters(&refMap, &typeMap),
-            new P4::SimplifyKey(&refMap, &typeMap,
-                                new P4::OrPolicy(
-                                    new P4::IsValid(&refMap, &typeMap),
-                                    new P4::IsLikeLeftValue())),
-            new P4::RemoveExits(&refMap, &typeMap),
-            new P4::ConstantFolding(&refMap, &typeMap),
-            new P4::SimplifySelectCases(&refMap, &typeMap, false),  // accept non-constant keysets
-            new P4::HandleNoMatch(&refMap),
-            new P4::SimplifyParsers(&refMap),
-            new P4::StrengthReduction(&refMap, &typeMap),
-            new P4::SimplifyComparisons(&refMap, &typeMap),
-            new P4::EliminateTuples(&refMap, &typeMap),
-            new P4::LocalCopyPropagation(&refMap, &typeMap),
-            new P4::SimplifySelectList(&refMap, &typeMap),
-            new P4::MoveDeclarations(),  // more may have been introduced
-            new P4::RemoveSelectBooleans(&refMap, &typeMap),
-            new P4::SingleArgumentSelect(),
-            new P4::ConstantFolding(&refMap, &typeMap),
-            new P4::SimplifyControlFlow(&refMap, &typeMap),
-            new P4::TableHit(&refMap, &typeMap),
-            new P4::ValidateTableProperties({"implementation"}),
-            new P4::RemoveLeftSlices(&refMap, &typeMap),
-            new WP4::Lower(&refMap, &typeMap),
-            evaluator,
-            new P4::MidEndLast()
-       };
+        midEnd.addPasses({
+                new P4::ConvertEnums(&refMap, &typeMap, new EnumOn32Bits()),
+                new P4::RemoveMiss(&refMap, &typeMap),
+                new P4::ClearTypeMap(&typeMap),
+                new P4::EliminateNewtype(&refMap, &typeMap),
+                new P4::SimplifyControlFlow(&refMap, &typeMap),
+                new P4::RemoveActionParameters(&refMap, &typeMap),
+                new P4::SimplifyKey(&refMap, &typeMap,
+                                    new P4::OrPolicy(
+                                            new P4::IsValid(&refMap, &typeMap),
+                                            new P4::IsLikeLeftValue())),
+                new P4::ConstantFolding(&refMap, &typeMap),
+                // accept non-constant keysets
+                new P4::SimplifySelectCases(&refMap, &typeMap, false),
+                new P4::HandleNoMatch(&refMap),
+                new P4::SimplifyParsers(&refMap),
+                new P4::StrengthReduction(&refMap, &typeMap),
+                new P4::SimplifyComparisons(&refMap, &typeMap),
+                new P4::LocalCopyPropagation(&refMap, &typeMap),
+                new P4::SimplifySelectList(&refMap, &typeMap),
+                new P4::MoveDeclarations(),  // more may have been introduced
+                new P4::RemoveSelectBooleans(&refMap, &typeMap),
+                new P4::SingleArgumentSelect(),
+                new P4::ConstantFolding(&refMap, &typeMap),
+                new P4::SimplifyControlFlow(&refMap, &typeMap),
+                new P4::TableHit(&refMap, &typeMap),
+                new P4::RemoveLeftSlices(&refMap, &typeMap),
+                new WP4::Lower(&refMap, &typeMap),
+                evaluator,
+                new P4::MidEndLast()
+        });
+        if (options.listMidendPasses) {
+            midEnd.listPasses(*outStream, "\n");
+            *outStream << std::endl;
+            return nullptr;
+        }
+        if (options.excludeMidendPasses) {
+            midEnd.removePasses(options.passesToExcludeMidend);
+        }
     } else {
-        midEnd = {
-            new P4::ResolveReferences(&refMap),
-            new P4::TypeChecking(&refMap, &typeMap),
-            evaluator
-        };
+        midEnd.addPasses({
+                new P4::ResolveReferences(&refMap),
+                new P4::TypeChecking(&refMap, &typeMap),
+                evaluator
+        });
     }
     midEnd.setName("MidEnd");
     midEnd.addDebugHooks(hooks);

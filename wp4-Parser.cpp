@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -238,7 +238,7 @@ StateTranslationVisitor::compileExtract(const IR::Expression* destination) {
     unsigned width = ht->width_bits();
     auto program = state->parser->program;
     builder->emitIndent();
-    builder->appendFormat("if (%s < %d) ", program->inPacketLengthVar.c_str(), width);
+    builder->appendFormat("if ((%s * 8) < %d) ", program->inPacketLengthVar.c_str(), width);
     builder->blockStart();
 
     builder->emitIndent();

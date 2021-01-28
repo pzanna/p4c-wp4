@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -36,6 +36,7 @@ void wp4Target::emitIncludes(Util::SourceCodeBuilder* builder) const {
          "#include <linux/mm.h>\n"  
          "#include <linux/skbuff.h>\n"
          "#include <linux/netdevice.h>\n"
+         "#include \"wp4_runtime.h\"\n"
          "\n");
 }
 

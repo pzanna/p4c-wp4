@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -102,7 +102,7 @@ unsigned WP4ScalarType::alignment() const {
 }
 
 void WP4ScalarType::emit(CodeBuilder* builder) {
-    auto prefix = isSigned ? "int" : "u";
+    auto prefix = isSigned ? "s" : "u";
 
     if (width <= 8)
         builder->appendFormat("%s8", prefix);

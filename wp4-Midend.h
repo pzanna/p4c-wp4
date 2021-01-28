@@ -1,5 +1,5 @@
 /*
-Copyright 2019 Northbound Networks.
+Copyright 2020 Paul Zanna.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -31,7 +31,7 @@ class MidEnd {
     P4::TypeMap            typeMap;
 
     void addDebugHook(DebugHook hook) { hooks.push_back(hook); }
-    const IR::ToplevelBlock* run(WP4Options& options, const IR::P4Program* program);
+    const IR::ToplevelBlock* run(WP4Options& options, const IR::P4Program* program, std::ostream* outStream = nullptr);
 };
 
 }  // namespace WP4

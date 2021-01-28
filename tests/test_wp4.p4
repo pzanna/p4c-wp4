@@ -10,6 +10,18 @@ typedef bit<9>  egressSpec_t;
 
 typedef bit<48> macAddr_t;  // MAC Address
 
+header rfFeatures_t {
+    bit<64>     timestamp;   // Frame Timestamp
+    bit<16>     rssi;        // RSSI (dB)
+    bit<16>     blank;       // Unusedß
+    bit<16>     len;         // Length
+    bit<16>     rate_idx;    // Rate Index
+    bit<32>     aux_1;      // AUX 1
+    int<32>     freqOffset; // Frequency Offset (kHz)
+    bit<32>     aux_3;      // AUX 3
+    bit<32>     aux_4;      // AUX 4
+}
+
 header frameCtrl_t {
     bit<2>      protoVer;   // Protocol Version 
     bit<2>      frameType; // Frame Type
@@ -34,8 +46,9 @@ header mac80211_t {
 }
 
 struct Headers_t {
-    frameCtrl_t frameCtrl;
-    mac80211_t  mac80211;
+    rfFeatures_t    rfFeatures; // RF Features
+    frameCtrl_t     frameCtrl;
+    mac80211_t      mac80211;
 }
 
 
@@ -44,11 +57,26 @@ struct Headers_t {
 *************************************************************************/
 
 parser prs(packet_in p, out Headers_t headers) {
+
     state start {
-        p.extract(headers.frameCtrl);
-        transition select(headers.frameCtrl.frameType) {
+        p.extract(headers.rfFeatures);
+        transition select(headers.rfFeatures.aux_1) {
+        0xCCCCDDDD : mac;
         default : accept;
         }
+    }
+
+    state mac {
+        p.extract(headers.frameCtrl);
+        transition select(headers.frameCtrl.frameType) {
+        0x00 : mgnt;
+        default : accept;
+        }
+    }
+
+    state mgnt {
+        p.extract(headers.mac80211);
+        transition accept;
     }
 }
 
