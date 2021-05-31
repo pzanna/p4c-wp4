@@ -19,13 +19,10 @@ limitations under the License.
 
 #include <core.p4>
 
-/**
- Implementation property for tables indicating that tables must be implemented
- using WP4Switch hash map.
-*/
-extern hash_table {
-    /// @param size: maximum number of entries in table
-    hash_table(bit<32> size);
+enum wp4_action {
+    DROP,
+    PASS,
+    CPU
 }
 
 /* architectural model for WP4Switch packet switch target architecture */
@@ -34,7 +31,7 @@ struct wp4_input {
 }
 
 struct wp4_output {
-    bit<32> output_port;  // output port for packet
+    wp4_action output_action;  // output action for packet
 }
 
 parser wp4_parse<H>(packet_in packet, out H headers);

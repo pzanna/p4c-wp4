@@ -36,10 +36,10 @@ class Target {
     const cstring name;
 
     virtual void emitLicense(Util::SourceCodeBuilder* builder, cstring license) const = 0;
-    virtual void emitCodeSection(Util::SourceCodeBuilder* builder, cstring sectionName) const = 0;
     virtual void emitIncludes(Util::SourceCodeBuilder* builder) const = 0;
     virtual void emitModule(Util::SourceCodeBuilder* builder) const = 0;
-    virtual void emitTableLookup(Util::SourceCodeBuilder* builder, cstring tblName, cstring key, cstring value) const = 0;
+    virtual void emitTableLookup(Util::SourceCodeBuilder* builder, cstring key, cstring value) const = 0;
+    virtual void emitTableDecl(Util::SourceCodeBuilder *builder, cstring tblName, cstring keyType, cstring valueType, unsigned size) const = 0;
     virtual void emitMain(Util::SourceCodeBuilder* builder, cstring functionName, cstring argName, cstring packetSize) const = 0;
     virtual cstring dataOffset(cstring base) const = 0;
     virtual cstring dataEnd(cstring base) const = 0;
@@ -53,17 +53,17 @@ class wp4Target : public Target {
  public:
     wp4Target() : Target("wp4") {}
     void emitLicense(Util::SourceCodeBuilder*, cstring) const override {};
-    void emitCodeSection(Util::SourceCodeBuilder*, cstring) const override {}
     void emitIncludes(Util::SourceCodeBuilder* builder) const override;
     void emitModule(Util::SourceCodeBuilder* builder) const override;
-    void emitTableLookup(Util::SourceCodeBuilder* builder, cstring tblName, cstring key, cstring value) const override;
+    void emitTableLookup(Util::SourceCodeBuilder* builder, cstring key, cstring value) const override;
+    virtual void emitTableDecl(Util::SourceCodeBuilder *builder, cstring tblName, cstring keyType, cstring valueType, unsigned size) const override;
     void emitMain(Util::SourceCodeBuilder* builder, cstring functionName, cstring argName, cstring packetSize) const override;
     cstring dataOffset(cstring base) const override { return base; }
     cstring dataEnd(cstring base) const override
     { return cstring("(") + base + " + " + base + "->len)"; }
-    cstring forwardReturnCode() const override { return "0"; }
+    cstring forwardReturnCode() const override { return "2"; }
     cstring dropReturnCode() const override { return "1"; }
-    cstring abortReturnCode() const override { return "1"; }
+    cstring abortReturnCode() const override { return "0"; }
 };
 
 }  // namespace WP4

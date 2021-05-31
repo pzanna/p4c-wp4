@@ -65,7 +65,7 @@ bool WP4Program::build() {
 void WP4Program::emitC(CodeBuilder* builder, cstring header) {
     emitGeneratedComment(builder);
 
-    builder->target->emitIncludes(builder);
+    builder->target->emitIncludes(builder);     // Add C header files
     builder->newline();
 
     builder->appendFormat("#include \"%s\"", header.c_str());
@@ -73,10 +73,17 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
     builder->newline();
 
     emitPreamble(builder);
-    builder->target->emitModule(builder);
-    builder->emitIndent(); 
-    builder->target->emitCodeSection(builder, functionName);
+
     builder->emitIndent();
+    control->emitTableInstances(builder);
+    builder->newline();
+
+    builder->emitIndent();
+    builder->appendFormat("struct wp4_output %s;", outputVar.c_str());
+    builder->newline();
+
+    builder->newline();
+    builder->target->emitModule(builder);       // Add kernel module config
     builder->target->emitMain(builder, "wp4_packet_in", model.CPacketName.str(), "wp4_ul_size");
     builder->blockStart();
 
@@ -128,20 +135,17 @@ void WP4Program::emitH(CodeBuilder* builder, cstring) {
     builder->newline();
     builder->appendLine("#define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))");
     builder->newline();
+    builder->appendLine("#define PACKET_BUFFER_SIZE 1024");
+    builder->newline();
     builder->appendLine("#include <linux/types.h>");
     builder->newline();
     builder->appendLine("int wp4_packet_in(u8 *p_uc_data, u16 wp4_ul_size, u8 port);");
     builder->newline();
     emitTypes(builder);
+    //emitBufferDefinition(builder);
+    builder->newline();    
     control->emitTableTypes(builder);
     builder->newline();
-    //builder->appendLine("static void init_tables() ");
-    //builder->blockStart();
-    //builder->emitIndent();
-    //builder->appendFormat("u32 %s = 0;", zeroKey.c_str());
-    //builder->newline();
-    //control->emitTableInitializers(builder);
-    //builder->blockEnd(true);
     builder->appendLine("#endif");
 }
 
@@ -168,10 +172,37 @@ void WP4Program::emitTypes(CodeBuilder* builder) {
             if (type == nullptr)
                 continue;
             type->emit(builder);
-            builder->newline();
         }
     }
 }
+
+    void WP4Program::emitBufferDefinition(CodeBuilder *builder) {
+
+        // definition of Packet Buffer
+        builder->append("struct ");
+        builder->append("packet_buffer");
+        builder->spc();
+        builder->blockStart();
+
+        builder->emitIndent();
+        builder->append("u8 reason;");
+        builder->newline();
+
+        builder->emitIndent();
+        builder->append("u16 size;");
+        builder->newline();
+
+        builder->emitIndent();
+        builder->append("u8 flow;");
+        builder->newline();
+
+        builder->emitIndent();
+        builder->append("u8 buffer[PACKET_BUFFER_SIZE];");
+        builder->newline();
+
+        builder->blockEnd(false);
+        builder->endOfStatement(true);
+    }
 
 void WP4Program::emitPreamble(CodeBuilder* builder) {
     builder->emitIndent();
@@ -186,16 +217,14 @@ void WP4Program::emitLocalVariables(CodeBuilder* builder) {
     builder->appendFormat("u16 %s = 0;", offsetVar); 
     builder->newline();
     builder->emitIndent();
-    builder->appendFormat("u8 *%s = %s;", packetStartVar, model.CPacketName.str());    
-
+    builder->appendFormat("u8 *%s = %s;", packetStartVar, model.CPacketName.str());
+    builder->newline();
     builder->newline();
     builder->emitIndent();
-    builder->appendFormat("struct %s %s;\n", model.outputMetadataModel.name, getSwitch()->outputMeta->name.name);
+    builder->appendFormat("dump_rx_packet(%s);", packetStartVar);
+    builder->newline();
     builder->emitIndent();
-    builder->appendFormat("struct %s %s;\n", model.inputMetadataModel.name, getSwitch()->inputMeta->name.name);
-    builder->emitIndent();
-    builder->appendFormat("%s.%s = port;\n", getSwitch()->inputMeta->name.name, WP4Model::instance.inputMetadataModel.inputPort.str());
-    
+    builder->appendLine("printk(\"** WP4: Packet Received, size = %d **\\n\", wp4_ul_size);");
 }
 
 void WP4Program::emitHeaderInstances(CodeBuilder* builder) {

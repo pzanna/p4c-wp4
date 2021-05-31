@@ -15,11 +15,12 @@ limitations under the License.
 */
 
 #include <linux/types.h>
+#include "wp4-p4.h"
 
 #define MAX_FLOWS    512
-#define SHARED_BUFFER_LEN 16384
+//#define SHARED_BUFFER_LEN 16384
 #define PACKET_BUFFER 32
-#define PACKET_BUFFER_SIZE 256
+//#define PACKET_BUFFER_SIZE 256
 #define PB_EMPTY 0
 #define PB_PACKETIN 1
 #define PB_PACKETOUT 2
@@ -29,6 +30,7 @@ void dump_rx_packet(u8 *ptr);
 int table_init(void);
 void table_exit(void);
 struct packet_out CPU_Port(int buffer_id);
+int wp4_table_lookup(struct swtch_lookup_tbl_key *key);
 
 struct flows_counter
 {

@@ -51,6 +51,7 @@ class WP4Program : public WP4Object {
     cstring zeroKey, functionName, errorVar;
     cstring packetStartVar, byteVar;
     cstring errorEnum;
+    cstring outputVar;
     cstring license = "GPL";  // TODO: this should be a compiler option probably
     cstring arrayIndexType = "u32";
     cstring inPacketLengthVar, outHeaderLengthVar;
@@ -67,6 +68,7 @@ class WP4Program : public WP4Object {
         zeroKey = WP4Model::reserved("zero");
         functionName = WP4Model::reserved("wp4_switch");
         byteVar = WP4Model::reserved("byte");
+        outputVar = cstring("wp4out");
         inPacketLengthVar = WP4Model::reserved("ul_size");
         outHeaderLengthVar = WP4Model::reserved("outHeaderLength");
         endLabel = WP4Model::reserved("end");
@@ -75,6 +77,7 @@ class WP4Program : public WP4Object {
     virtual void emitGeneratedComment(CodeBuilder* builder);
     virtual void emitPreamble(CodeBuilder* builder);
     virtual void emitTypes(CodeBuilder* builder);
+    virtual void emitBufferDefinition(CodeBuilder *builder);
     virtual void emitHeaderInstances(CodeBuilder* builder);
     virtual void emitLocalVariables(CodeBuilder* builder);
     virtual void emitPipeline(CodeBuilder* builder);

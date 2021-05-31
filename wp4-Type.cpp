@@ -116,6 +116,19 @@ void WP4ScalarType::emit(CodeBuilder* builder) {
         builder->appendFormat("u8*");
 }
 
+cstring WP4ScalarType::getAsString() {
+    if (width <= 8)
+        return cstring("u8");
+    else if (width <= 16)
+        return cstring("u16");
+    else if (width <= 32)
+        return cstring("u32");
+    else if (width <= 64)
+        return cstring("u64");
+    else
+        return cstring("u8*");
+}
+
 void
 WP4ScalarType::declare(CodeBuilder* builder, cstring id, bool asPointer) {
     if (WP4ScalarType::generatesScalar(width)) {
@@ -286,7 +299,8 @@ void WP4EnumType::emit(WP4::CodeBuilder* builder) {
         builder->append(m->name);
         builder->appendLine(",");
     }
-    builder->blockEnd(true);
+    builder->blockEnd(false);
+    builder->endOfStatement(true);
 }
 
 }  // namespace WP4

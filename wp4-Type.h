@@ -24,6 +24,8 @@ limitations under the License.
 
 namespace WP4 {
 
+#define UNUSED __attribute__((__unused__))
+
 // Base class for WP4 types
 class WP4Type : public WP4Object {
  protected:
@@ -98,6 +100,7 @@ class WP4ScalarType : public WP4Type, public IHasWidth {
     unsigned bytesRequired() const { return ROUNDUP(width, 8); }
     unsigned alignment() const;
     void emit(CodeBuilder* builder) override;
+    cstring getAsString();    
     void declare(CodeBuilder* builder, cstring id, bool asPointer) override;
     void emitInitializer(CodeBuilder* builder) override
     { builder->append("0"); }

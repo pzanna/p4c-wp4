@@ -31,7 +31,7 @@ limitations under the License.
 #endif
 
 //  Local variables
-struct flow_table *flow_table;
+struct wp4_map_def *flow_table;
 struct pbuffer *pk_buffer;
 struct dentry  *fileret, *dirret;
 //struct mmap_info *op_info;
@@ -59,8 +59,8 @@ void dump_rx_packet(u8 *ptr)
         *(ptr + i + 1), *(ptr + i + 2) , *(ptr + i + 3) , *(ptr + i + 4), *(ptr + i + 5), *(ptr + i + 6), *(ptr + i + 7),
         *(ptr + i + 8), *(ptr + i + 9), *(ptr + i + 10) , *(ptr + i + 11) , *(ptr + i + 12), *(ptr + i + 13), *(ptr + i + 14), *(ptr + i + 15));
     printk("***********************************************\n");
-    flow_table->iLastFlow++;
-    printk("iLastFlow %d\n", flow_table->iLastFlow);
+    flow_table->last_entry++;
+    printk("iLastFlow %d\n", flow_table->last_entry);
 }
 
 
@@ -196,7 +196,7 @@ int table_init(void)
         return -1;
     }
     /* round it up to the page bondary */
-    flow_table = (struct flow_table *)((((unsigned long)flow_table_ptr) + PAGE_SIZE - 1) & PAGE_MASK);
+    flow_table = (struct wp4_map_def *)((((unsigned long)flow_table_ptr) + PAGE_SIZE - 1) & PAGE_MASK);
     printk("WP4: flow_table allocated at %p\n", (void*)flow_table);
 
 
@@ -225,8 +225,6 @@ int table_init(void)
     memset(flow_table, 0, FTPAGES * PAGE_SIZE);
     memset(pk_buffer, 0, PBPAGES * PAGE_SIZE);
 
-    //dirret = debugfs_create_dir("wp4", NULL);
-    //fileret = debugfs_create_file("data", 0644, dirret, NULL, &mmap_fops);
     proc_create("wp4_data", 0, NULL, &mmap_fops);
 
     return 0;
@@ -234,10 +232,17 @@ int table_init(void)
 
 void table_exit(void)
 {
-    //debugfs_remove_recursive(dirret);
     remove_proc_entry("wp4_data", NULL);
     return;
 }
+
+
+int wp4_table_lookup(struct swtch_lookup_tbl_key *key)
+{
+    printk("FrameType %d - SubType - %d\n", key->headers_frameCtrl_frameType, key->headers_frameCtrl_subType);
+    return 2;
+}
+
 
 /*
  *  Packet poll request

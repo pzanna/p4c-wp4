@@ -29,7 +29,10 @@ class WP4TableBase : public WP4Object {
     cstring instanceName;
     cstring keyTypeName;
     cstring valueTypeName;
+    const IR::Type *keyType{};
+    const IR::Type *valueType{};
     cstring dataMapName;
+    size_t size{};
     CodeGenInspector* codeGen;
 
  protected:
@@ -44,17 +47,23 @@ class WP4TableBase : public WP4Object {
 };
 
 class WP4Table final : public WP4TableBase {
+private:
+    void setTableSize(const IR::TableBlock *table);
+    
  public:
     const IR::Key*            keyGenerator;
     const IR::ActionList*     actionList;
     const IR::TableBlock*    table;
-    cstring               defaultActionMapName;
-    cstring               actionEnumName;
+    cstring     defaultActionMapName;
+    cstring     actionEnumName;
+    cstring     noActionName;
     std::map<const IR::KeyElement*, cstring> keyFieldNames;
     std::map<const IR::KeyElement*, WP4Type*> keyTypes;
 
     WP4Table(const WP4Program* program, const IR::TableBlock* table, CodeGenInspector* codeGen);
+    cstring generateActionName(const IR::P4Action *action);
     void emitTypes(CodeBuilder* builder);
+    void emitInstance(CodeBuilder* builder);
     void emitActionArguments(CodeBuilder* builder, const IR::P4Action* action, cstring name);
     void emitKeyType(CodeBuilder* builder);
     void emitValueType(CodeBuilder* builder);

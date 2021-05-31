@@ -51,6 +51,7 @@ void ControlBodyTranslator::processFunction(const P4::ExternFunction* function) 
 }
 
 bool ControlBodyTranslator::preorder(const IR::MethodCallExpression* expression) {
+    builder->emitIndent();
     builder->append("/* ");
     visit(expression->method);
     builder->append("(");
@@ -252,63 +253,68 @@ void ControlBodyTranslator::processApply(const P4::ApplyMethod* method) {
         builder->emitIndent();
         builder->appendFormat("struct %s %s = {}", table->keyTypeName.c_str(), keyname.c_str());
         builder->endOfStatement(true);
+        builder->emitIndent();
+        builder->appendFormat("struct %s %s = {}", table->keyTypeName.c_str(), control->program->zeroKey);
+        builder->endOfStatement(true);
         table->emitKey(builder, keyname);
     }
     builder->emitIndent();
     builder->appendLine("/* value */");
     builder->emitIndent();
     cstring valueName = "value";
-    builder->appendFormat("struct %s *%s = NULL", table->valueTypeName.c_str(), valueName.c_str());
+    builder->appendFormat("enum %s %s", table->actionEnumName.c_str(), valueName.c_str());
     builder->endOfStatement(true);
 
     if (table->keyGenerator != nullptr) {
         builder->emitIndent();
         builder->appendLine("/* perform lookup */");
         builder->emitIndent();
-        builder->target->emitTableLookup(builder, table->dataMapName, keyname, valueName);
+        builder->appendFormat("%s = ", valueName.c_str());
+        builder->target->emitTableLookup(builder, keyname, valueName);
         builder->endOfStatement(true);
     }
 
-    builder->emitIndent();
-    builder->appendFormat("if (%s == NULL) ", valueName.c_str());
-    builder->blockStart();
+    //builder->emitIndent();
+    //builder->appendFormat("if (%s == NULL) ", valueName.c_str());
+    //builder->blockStart();
 
-    builder->emitIndent();
-    builder->appendLine("/* miss; find default action */");
-    builder->emitIndent();
-    builder->appendFormat("%s = 0", control->hitVariable.c_str());
-    builder->endOfStatement(true);
+    //builder->emitIndent();
+    //builder->appendLine("/* miss; find default action */");
+    //builder->emitIndent();
+    //builder->appendFormat("%s = 0", control->hitVariable.c_str());
+    //builder->endOfStatement(true);
 
-    builder->emitIndent();
-    builder->target->emitTableLookup(builder, table->defaultActionMapName, control->program->zeroKey, valueName);
-    builder->endOfStatement(true);
-    builder->blockEnd(false);
-    builder->append(" else ");
-    builder->blockStart();
-    builder->emitIndent();
-    builder->appendFormat("%s = 1", control->hitVariable.c_str());
-    builder->endOfStatement(true);
-    builder->blockEnd(true);
+    //builder->emitIndent();
+    //builder->appendFormat("%s = ", valueName.c_str());   
+    //builder->target->emitTableLookup(builder, control->program->zeroKey, valueName);
+    //builder->endOfStatement(true);
+    //builder->blockEnd(false);
+    //builder->append(" else ");
+    //builder->blockStart();
+    //builder->emitIndent();
+    //builder->appendFormat("%s = 1", control->hitVariable.c_str());
+    //builder->endOfStatement(true);
+    //builder->blockEnd(true);
 
-    builder->emitIndent();
-    builder->appendFormat("if (%s != NULL) ", valueName.c_str());
-    builder->blockStart();
+    //builder->emitIndent();
+    //builder->appendFormat("if (%s != NULL) ", valueName.c_str());
+    //builder->blockStart();
     builder->emitIndent();
     builder->appendLine("/* run action */");
     table->emitAction(builder, valueName);
     if (!actionVariableName.isNullOrEmpty()) {
         builder->emitIndent();
-        builder->appendFormat("%s = %s->action", actionVariableName.c_str(), valueName.c_str());
+        builder->appendFormat("%s = %s", actionVariableName.c_str(), valueName.c_str());
         builder->endOfStatement(true);
     }
     toDereference.clear();
 
     builder->blockEnd(true);
     builder->emitIndent();
-    builder->appendFormat("else return %s", builder->target->abortReturnCode().c_str());
-    builder->endOfStatement(true);
+    builder->appendFormat("return %s", builder->target->abortReturnCode().c_str());
+    //builder->endOfStatement(true);
 
-    builder->blockEnd(true);
+    //builder->blockEnd(true);
 }
 
 bool ControlBodyTranslator::preorder(const IR::ExitStatement*) {
@@ -480,6 +486,11 @@ void WP4Control::emit(CodeBuilder* builder) {
 void WP4Control::emitTableTypes(CodeBuilder* builder) {
     for (auto it : tables)
         it.second->emitTypes(builder);
+}
+
+void WP4Control::emitTableInstances(CodeBuilder* builder) {
+    for (auto it : tables)
+        it.second->emitInstance(builder);
 }
 
 void WP4Control::emitTableInitializers(CodeBuilder* builder) {

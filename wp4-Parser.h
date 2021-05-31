@@ -38,11 +38,11 @@ class WP4ParserState : public WP4Object {
 class WP4Parser : public WP4Object {
  public:
     const WP4Program*            program;
-    const P4::TypeMap*                typeMap;
-    const IR::ParserBlock*            parserBlock;
+    const P4::TypeMap*           typeMap;
+    const IR::ParserBlock*       parserBlock;
     std::vector<WP4ParserState*> states;
-    const IR::Parameter*              packet;
-    const IR::Parameter*              headers;
+    const IR::Parameter*         packet;
+    const IR::Parameter*         headers;
     WP4Type*                     headerType;
 
     explicit WP4Parser(const WP4Program* program, const IR::ParserBlock* block, const P4::TypeMap* typeMap);

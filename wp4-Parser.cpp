@@ -28,6 +28,14 @@ class StateTranslationVisitor : public CodeGenInspector {
     P4::P4CoreLibrary& p4lib;
     const WP4ParserState* state;
 
+    void emitCheckPacketLength(const IR::Expression* expr, const char * varname, unsigned width);
+    void emitCheckPacketLength(const IR::Expression* expr)
+    { emitCheckPacketLength(expr, nullptr, 0); }
+    void emitCheckPacketLength(unsigned width)
+    { emitCheckPacketLength(nullptr, nullptr, width); }
+    void emitCheckPacketLength(const char * varname)
+    { emitCheckPacketLength(nullptr, varname, 0); }
+
     void compileExtractField(const IR::Expression* expr, cstring name, unsigned alignment, WP4Type* type);
     void compileExtract(const IR::Expression* destination);
     void compileLookahead(const IR::Expression* destination);
@@ -47,8 +55,32 @@ class StateTranslationVisitor : public CodeGenInspector {
 };
 }  // namespace
 
-void
-StateTranslationVisitor::compileLookahead(const IR::Expression* destination) {
+// if expr is nullprt, width is used instead
+void StateTranslationVisitor::emitCheckPacketLength(const IR::Expression* expr, const char * varname, unsigned width) {
+    auto program = state->parser->program;
+
+    builder->emitIndent();
+    if (expr != nullptr) {
+        builder->appendFormat("if (%s < BYTES(%s + ", program->inPacketLengthVar.c_str(), program->offsetVar.c_str()); 
+        visit(expr);
+        builder->append(")) ");
+    } else if (varname != nullptr) {
+        builder->appendFormat("if (%s < BYTES(%s + %s)) ", program->inPacketLengthVar.c_str(), program->offsetVar.c_str(), varname);
+    } else {
+        builder->appendFormat("if (%s < BYTES(%s + %d)) ", program->inPacketLengthVar.c_str(), program->offsetVar.c_str(), width);
+    }
+
+    builder->blockStart();
+    builder->emitIndent();
+    builder->appendFormat("goto %s;", IR::ParserState::reject.c_str());
+    builder->newline();
+    builder->blockEnd(true);
+
+    builder->emitIndent();
+    builder->newline();
+}
+
+void StateTranslationVisitor::compileLookahead(const IR::Expression* destination) {
     builder->emitIndent();
     builder->blockStart();
     builder->emitIndent();
@@ -146,7 +178,7 @@ bool StateTranslationVisitor::preorder(const IR::SelectCase* selectCase) {
         builder->append("default: ");
     } else {
         builder->append("case ");
-        visit(selectCase->keyset);
+        visit(selectCase->keyset);      //32w
         builder->append(": ");
     }
     builder->append("goto ");
@@ -155,9 +187,7 @@ bool StateTranslationVisitor::preorder(const IR::SelectCase* selectCase) {
     return false;
 }
 
-void
-StateTranslationVisitor::compileExtractField(
-    const IR::Expression* expr, cstring field, unsigned alignment, WP4Type* type) {
+void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cstring field, unsigned alignment, WP4Type* type) {
     unsigned widthToExtract = dynamic_cast<IHasWidth*>(type)->widthInBits();
     auto program = state->parser->program;
 
@@ -183,7 +213,8 @@ StateTranslationVisitor::compileExtractField(
         loadSize = 64;
     }
 
-    unsigned shift = loadSize - alignment - widthToExtract;
+    //unsigned shift = loadSize - alignment - widthToExtract;
+    unsigned shift = alignment;
     builder->emitIndent();
 
     builder->appendFormat("memcpy(&");
@@ -201,7 +232,7 @@ StateTranslationVisitor::compileExtractField(
             builder->appendFormat(" >> %d", shift);
         builder->appendFormat(";");
     } 
-
+    //builder->appendFormat("** %d - %d - %d **", loadSize, alignment, widthToExtract);
     if (loadSize <= 8 && shift != 0) {
         builder->newline();
         builder->emitIndent();
@@ -220,14 +251,22 @@ StateTranslationVisitor::compileExtractField(
 
     builder->newline();
     builder->emitIndent();
-    builder->appendFormat("%s += %d", program->offsetVar.c_str(), widthToExtract);
+    builder->appendFormat("%s += %d;", program->offsetVar.c_str(), widthToExtract);
+
+    /* Printk headers values that are 8 bytes or less */
+    if (loadSize <= 8) {
+        builder->newline();
+        builder->emitIndent();
+        builder->appendFormat("printk(\"** WP4: %s = %%d **\\n\", ", field.c_str());
+        visit(expr);
+        builder->appendFormat(".%s)", field.c_str());
+    }
 
     builder->endOfStatement(true);
     builder->newline();
 }
 
-void
-StateTranslationVisitor::compileExtract(const IR::Expression* destination) {
+void StateTranslationVisitor::compileExtract(const IR::Expression* destination) {
     auto type = state->parser->typeMap->getType(destination);
     auto ht = type->to<IR::Type_StructLike>();
     if (ht == nullptr) {
@@ -236,18 +275,7 @@ StateTranslationVisitor::compileExtract(const IR::Expression* destination) {
     }
 
     unsigned width = ht->width_bits();
-    auto program = state->parser->program;
-    builder->emitIndent();
-    builder->appendFormat("if ((%s * 8) < %d) ", program->inPacketLengthVar.c_str(), width);
-    builder->blockStart();
-
-    builder->emitIndent();
-    builder->newline();
-
-    builder->emitIndent();
-    builder->appendFormat("goto %s;", IR::ParserState::accept.c_str());
-    builder->newline();
-    builder->blockEnd(true);
+    emitCheckPacketLength(width);
 
     unsigned alignment = 0;
     for (auto f : ht->fields) {
@@ -359,8 +387,18 @@ void WP4Parser::emit(CodeBuilder* builder) {
 
     // Create a synthetic reject state
     builder->emitIndent();
-    builder->appendFormat("%s: { return %s; }", IR::ParserState::reject.c_str(), builder->target->abortReturnCode().c_str());
+    //builder->appendFormat("%s: { return %s; }", IR::ParserState::reject.c_str(), builder->target->abortReturnCode().c_str());
+    builder->appendFormat("%s: { ", IR::ParserState::reject.c_str());
     builder->newline();
+    builder->emitIndent();
+    builder->emitIndent();
+    builder->appendLine("printk(\"** WP4: Packet Rejected!! **\\n\");");
+    builder->emitIndent();
+    builder->emitIndent();
+    builder->appendFormat("return %s;", builder->target->abortReturnCode().c_str());
+    builder->newline();
+    builder->emitIndent();
+    builder->appendFormat("}");
     builder->newline();
 }
 

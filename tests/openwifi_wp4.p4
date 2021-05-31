@@ -10,16 +10,18 @@ typedef bit<9>  egressSpec_t;
 
 typedef bit<48> macAddr_t;  // MAC Address
 
+#define RF_FEATURE 1234
+
 header rfFeatures_t {
     bit<64>     timestamp;   // Frame Timestamp
     bit<16>     rssi;        // RSSI (dB)
     bit<16>     blank;       // Unusedß
     bit<16>     len;         // Length
     bit<16>     rate_idx;    // Rate Index
-    bit<32>     aux_1;      // AUX 1
-    int<32>     freqOffset; // Frequency Offset (kHz)
-    bit<32>     aux_3;      // AUX 3
-    bit<32>     aux_4;      // AUX 4
+    int<32>     phaseOffset; // AUX 1
+    int<32>     pilotOffset; // Frequency Offset (kHz)
+    int<32>     magSq;       // AUX 3
+    bit<32>     aux_4;       // AUX 4
 }
 
 header frameCtrl_t {
@@ -60,35 +62,87 @@ parser prs(packet_in p, out Headers_t headers) {
 
     state start {
         p.extract(headers.rfFeatures);
-        transition select(headers.rfFeatures.aux_1) {
-        0xCCCCDDDD : mac;
-        default : accept;
+        transition select(headers.rfFeatures.phaseOffset) {
+        default : prot_ver;
         }
     }
 
-    state mac {
+    state prot_ver {
         p.extract(headers.frameCtrl);
+        transition select(headers.frameCtrl.protoVer) {
+        0x00 : frame_type;
+        default : reject;
+        }
+    }
+
+    state frame_type {
         transition select(headers.frameCtrl.frameType) {
-        0x00 : mgnt;
+        0x00 : mac80211;
+        0x02 : data;
         default : accept;
         }
     }
 
-    state mgnt {
+    state data {
+        transition select(headers.frameCtrl.subType) {
+        0x04 : accept;
+        default : mac80211;
+        }
+    }
+
+    state mac80211 {
         p.extract(headers.mac80211);
-        transition accept;
+        transition select(headers.mac80211.Addr2) {
+        default : accept;
+        }
     }
 }
 
 control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out){
-    apply {
+
+    action Pass_action() {
+        wp4out.output_action = wp4_action.PASS;
+    }
+
+    action Drop_action() {
+        wp4out.output_action = wp4_action.DROP;
+    }
+
+    action CPU_action() {
+        wp4out.output_action = wp4_action.CPU;
+    }
+
+    table lookup_tbl {
+
+        size = 1024;
+
+        key = {
+            headers.mac80211.Addr2 : exact;
+            headers.frameCtrl.frameType : exact;
+            headers.frameCtrl.subType : exact;
+        }
+
+        actions = {
+            Pass_action;
+            Drop_action;
+            CPU_action;
+        }
 
     }
+
+    apply {
+        lookup_tbl.apply();
+        if (wp4out.output_action == wp4_action.PASS) return;
+    }
+
 }
+
 control deprs(in Headers_t headers, packet_out p, in wp4_output wp4out){
     apply {
-    
+        p.emit(headers.frameCtrl);
+        p.emit(headers.mac80211);
     }
 }
+
 
 WP4Switch(prs(), swtch(), deprs())main;
