@@ -21,7 +21,7 @@ header rfFeatures_t {
     int<32>     phaseOffset; // AUX 1
     int<32>     pilotOffset; // Frequency Offset (kHz)
     int<32>     magSq;       // AUX 3
-    bit<32>     aux_4;       // AUX 4
+    int<32>     aux_4;       // AUX 4
 }
 
 header frameCtrl_t {
@@ -53,6 +53,8 @@ struct Headers_t {
     mac80211_t      mac80211;
 }
 
+/** Declaration of the wp4_runtime extern function. */
+extern void to_cpu(in Headers_t headers);
 
 /*************************************************************************
 *********************** P A R S E R  ***********************************
@@ -100,16 +102,17 @@ parser prs(packet_in p, out Headers_t headers) {
 
 control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out){
 
-    action Pass_action() {
-        wp4out.output_action = wp4_action.PASS;
-    }
-
     action Drop_action() {
         wp4out.output_action = wp4_action.DROP;
     }
 
+    action Pass_action() {
+        wp4out.output_action = wp4_action.PASS;
+    }
+
     action CPU_action() {
         wp4out.output_action = wp4_action.CPU;
+        to_cpu(headers);
     }
 
     table lookup_tbl {
@@ -120,11 +123,13 @@ control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out
             headers.mac80211.Addr2 : exact;
             headers.frameCtrl.frameType : exact;
             headers.frameCtrl.subType : exact;
+            headers.rfFeatures.phaseOffset : min;
+            headers.rfFeatures.phaseOffset : max;
         }
 
         actions = {
-            Pass_action;
             Drop_action;
+            Pass_action;
             CPU_action;
         }
 
@@ -132,7 +137,6 @@ control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out
 
     apply {
         lookup_tbl.apply();
-        if (wp4out.output_action == wp4_action.PASS) return;
     }
 
 }

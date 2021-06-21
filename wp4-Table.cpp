@@ -167,21 +167,53 @@ void WP4Table::emitKeyType(CodeBuilder* builder) {
         for (auto it = ordered.rbegin(); it != ordered.rend(); ++it) {
             auto c = it->second;
 
+            auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+            auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+
             auto wp4Type = ::get(keyTypes, c);
             builder->emitIndent();
             cstring fieldName = ::get(keyFieldNames, c);
             wp4Type->declare(builder, fieldName, false);
+            builder->appendFormat("_%s", matchType->name.name);
             builder->append("; /* ");
             c->expression->apply(commentGen);
+            builder->appendFormat("_%s", matchType->name.name);
             builder->append(" */");
             builder->newline();
 
-            auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
-            auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
-            if (matchType->name.name != P4::P4CoreLibrary::instance.exactMatch.name)
+            if (matchType->name.name != P4::P4CoreLibrary::instance.exactMatch.name && matchType->name.name != "min" && matchType->name.name != "max")
                 ::error("Match of type %1% not supported", c->matchType);
         }
     }
+    builder->blockEnd(false);
+    builder->endOfStatement(true);
+
+    // definition of counters
+    builder->newline();
+    builder->append("struct flows_counter");
+    builder->spc();
+    builder->blockStart();
+
+    builder->emitIndent();
+    builder->append("u64 hitCount;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("u64 bytes;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("u32 duration;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("u8 active;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("int lastmatch;");
+    builder->newline();
+
     builder->blockEnd(false);
     builder->endOfStatement(true);
 
@@ -209,7 +241,18 @@ void WP4Table::emitKeyType(CodeBuilder* builder) {
     builder->newline();
 
     builder->emitIndent();
-    builder->appendFormat("struct %s lookup_key[%d];", keyTypeName.c_str(), size);
+    builder->appendFormat("struct %s key[%d];", keyTypeName.c_str(), size);
+    builder->newline();
+
+    builder->emitIndent();
+    //builder->append("enum ");
+    //builder->append(actionEnumName);
+    //builder->spc();
+    builder->appendFormat("u8 action[%d];", size);
+    builder->newline();
+
+    builder->emitIndent();
+    builder->appendFormat("struct flows_counter flow_counters[%d];", size);
     builder->newline();
 
     builder->blockEnd(false);
@@ -263,34 +306,6 @@ void WP4Table::emitValueType(CodeBuilder* builder) {
 
     builder->blockEnd(false);
     builder->endOfStatement(true);
-/*
-    // a type-safe union: a struct with a tag and an union
-    builder->emitIndent();
-    builder->newline();
-    builder->appendFormat("struct %s ", valueTypeName.c_str());
-    builder->blockStart();
-
-    builder->emitIndent();
-    builder->appendFormat("enum %s action;", actionEnumName.c_str());
-    builder->newline();
-
-    builder->emitIndent();
-    builder->append("union ");
-    builder->blockStart();
-
-    for (auto a : actionList->actionList) {
-        auto adecl = program->refMap->getDeclaration(a->getPath(), true);
-        auto action = adecl->getNode()->to<IR::P4Action>();
-        cstring name = generateActionName(action);
-        emitActionArguments(builder, action, name);
-    }
-
-    builder->blockEnd(false);
-    builder->spc();
-    builder->appendLine("u;");
-    builder->blockEnd(false);
-    builder->endOfStatement(true);
-*/
 }
 
 void WP4Table::emitTypes(CodeBuilder* builder) {
@@ -343,14 +358,15 @@ void WP4Table::emitKey(CodeBuilder* builder, cstring keyName) {
             width = scalar->implementationWidthInBits();
             memcpy = !WP4ScalarType::generatesScalar(width);
         }
-
+        auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+        auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
         builder->emitIndent();
         if (memcpy) {
             builder->appendFormat("memcpy(&%s.%s, &", keyName.c_str(), fieldName.c_str());
             codeGen->visit(c->expression);
             builder->appendFormat(", %d)", scalar->bytesRequired());
         } else {
-            builder->appendFormat("%s.%s = ", keyName.c_str(), fieldName.c_str());
+            builder->appendFormat("%s.%s_%s = ", keyName.c_str(), fieldName.c_str(), matchType->name.name);
             codeGen->visit(c->expression);
         }
         builder->endOfStatement(true);
@@ -376,8 +392,8 @@ void WP4Table::emitAction(CodeBuilder* builder, cstring valueName) {
         ActionTranslationVisitor visitor(valueName, program);
         visitor.setBuilder(builder);
         visitor.copySubstitutions(codeGen);
-
-        action->apply(visitor);
+    
+        action->apply(visitor);     // list actions
         builder->newline();
         builder->blockEnd(true);
         builder->emitIndent();
@@ -386,7 +402,7 @@ void WP4Table::emitAction(CodeBuilder* builder, cstring valueName) {
     }
 
     builder->emitIndent();
-    builder->appendFormat("default: return %s", builder->target->abortReturnCode().c_str());
+    builder->appendFormat("default: return %s", builder->target->forwardReturnCode().c_str());
     builder->endOfStatement(true);
     builder->blockEnd(true);
 }
@@ -401,9 +417,6 @@ void WP4Table::emitInitializer(CodeBuilder* builder) {
     auto mi = P4::MethodInstance::resolve(mce, program->refMap, program->typeMap);
 
     auto defact = t->properties->getProperty(IR::TableProperties::defaultActionPropertyName);
-    // uBPF does not support setting default action at compile time.
-    // Default action must be set from a control plane and 'const' qualifier
-    // does not permit to modify default action by a control plane.
     if (defact->isConstant) {
         ::error(ErrorType::ERR_UNSUPPORTED_ON_TARGET,
                 "%1%: WP4 target does not allow 'const default_action'. "
@@ -458,5 +471,74 @@ void WP4Table::emitInitializer(CodeBuilder* builder) {
                 entries);
     }
 }
+
+void WP4Table::emitLookupFunc(CodeBuilder* builder) {
+    cstring keyName = "key";
+    builder->newline();
+    builder->appendFormat("int wp4_table_lookup(struct %s *key)",keyTypeName.c_str());
+    builder->spc();
+    builder->blockStart();
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("int i;");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("for (i=0;i<flow_table->last_entry;i++)");
+    builder->newline();
+    builder->emitIndent();
+    builder->blockStart();
+
+    /* Print out values */
+    for (auto c : keyGenerator->keyElements) {
+        cstring fieldName = ::get(keyFieldNames, c);
+        //cstring fieldName2 = c->expression->toString();
+        auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+        auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+        CHECK_NULL(fieldName);
+        /* Print Key Values */
+        builder->emitIndent(); 
+        builder->appendFormat("printk(\"%s_%s:", fieldName.c_str(), matchType->name.name);
+        builder->append(" %d  - %d\\n\"");
+        builder->appendFormat(", %s->%s_%s, flow_table->%s[i].%s_%s);", keyName.c_str(), fieldName.c_str(), matchType->name.name, keyName.c_str(), fieldName.c_str(), matchType->name.name);  // flow_table->keyName->fieldName - key->headers_mac80211_Addr2
+        builder->newline();
+
+    }
+    builder->emitIndent();
+    builder->append("printk(\"Action = %d\\n\", flow_table->action[i]);");
+    builder->newline();
+    builder->emitIndent();
+    builder->newline();
+
+    /* Evaluate match fields */
+    for (auto c : keyGenerator->keyElements) {
+        cstring fieldName = ::get(keyFieldNames, c);
+        auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+        auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+        CHECK_NULL(fieldName);
+        /* Print key compares */
+        builder->emitIndent();
+        builder->appendFormat("if (%s->%s_%s", keyName.c_str(), fieldName.c_str(), matchType->name.name);
+        if (matchType->name.name == "exact")  builder->append(" != ");
+        if (matchType->name.name == "min")  builder->append(" < ");
+        if (matchType->name.name == "max")  builder->append(" > ");
+        builder->appendFormat("flow_table->%s[i].%s_%s)", keyName.c_str(), fieldName.c_str(), matchType->name.name);
+        builder->append(" continue;    // No match");
+        builder->newline();
+    }
+    builder->newline();
+    builder->emitIndent();
+    builder->append("return flow_table->action[i];    // Return matched action");
+    builder->newline();
+    builder->blockEnd(false);
+    builder->newline();
+    builder->emitIndent();
+    builder->append("return -1;    // Return no matches");
+    builder->newline();
+    builder->blockEnd(false);
+    builder->newline();
+
+}
+
 
 }  // namespace WP4

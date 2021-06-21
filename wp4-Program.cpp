@@ -74,15 +74,17 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
 
     emitPreamble(builder);
 
-    builder->emitIndent();
-    control->emitTableInstances(builder);
+    builder->appendLine("int wp4_table_lookup(struct swtch_lookup_tbl_key *key);");
     builder->newline();
-
+    
     builder->emitIndent();
     builder->appendFormat("struct wp4_output %s;", outputVar.c_str());
     builder->newline();
 
+    builder->emitIndent();
+    control->emitTableInstances(builder);
     builder->newline();
+
     builder->target->emitModule(builder);       // Add kernel module config
     builder->target->emitMain(builder, "wp4_packet_in", model.CPacketName.str(), "wp4_ul_size");
     builder->blockStart();
@@ -107,9 +109,10 @@ void WP4Program::emitC(CodeBuilder* builder, cstring header) {
 
     builder->appendFormat("\n// Start of Deparser\n");
     deparser->emit(builder);
-    builder->appendFormat("    return 0;");
+    builder->appendFormat("    return wp4out.output_action;");
     builder->newline();
     builder->blockEnd(true);  // end of function
+    control->emitLookup(builder);
     builder->appendFormat("\n// Kernel module functions\n");
     builder->append(
         "EXPORT_SYMBOL(wp4_packet_in);\n"

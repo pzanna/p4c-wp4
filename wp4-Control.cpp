@@ -66,9 +66,7 @@ bool ControlBodyTranslator::preorder(const IR::MethodCallExpression* expression)
     builder->append("*/");
     builder->newline();
 
-    auto mi = P4::MethodInstance::resolve(expression,
-                                          control->program->refMap,
-                                          control->program->typeMap);
+    auto mi = P4::MethodInstance::resolve(expression, control->program->refMap, control->program->typeMap);
     auto apply = mi->to<P4::ApplyMethod>();
     if (apply != nullptr) {
         processApply(apply);
@@ -76,7 +74,7 @@ bool ControlBodyTranslator::preorder(const IR::MethodCallExpression* expression)
     }
     auto ef = mi->to<P4::ExternFunction>();
     if (ef != nullptr) {
-        processFunction(ef);
+        //processFunction(ef);
         return false;
     }
     auto bim = mi->to<P4::BuiltInMethod>();
@@ -99,8 +97,7 @@ bool ControlBodyTranslator::preorder(const IR::MethodCallExpression* expression)
     auto ac = mi->to<P4::ActionCall>();
     if (ac != nullptr) {
         // Action arguments have been eliminated by the mid-end.
-        BUG_CHECK(expression->arguments->size() == 0,
-                  "%1%: unexpected arguments for action call", expression);
+        BUG_CHECK(expression->arguments->size() == 0, "%1%: unexpected arguments for action call", expression);
         visit(ac->action->body);
         return false;
     }
@@ -274,31 +271,9 @@ void ControlBodyTranslator::processApply(const P4::ApplyMethod* method) {
         builder->endOfStatement(true);
     }
 
-    //builder->emitIndent();
-    //builder->appendFormat("if (%s == NULL) ", valueName.c_str());
-    //builder->blockStart();
-
-    //builder->emitIndent();
-    //builder->appendLine("/* miss; find default action */");
-    //builder->emitIndent();
-    //builder->appendFormat("%s = 0", control->hitVariable.c_str());
-    //builder->endOfStatement(true);
-
-    //builder->emitIndent();
-    //builder->appendFormat("%s = ", valueName.c_str());   
-    //builder->target->emitTableLookup(builder, control->program->zeroKey, valueName);
-    //builder->endOfStatement(true);
-    //builder->blockEnd(false);
-    //builder->append(" else ");
-    //builder->blockStart();
-    //builder->emitIndent();
-    //builder->appendFormat("%s = 1", control->hitVariable.c_str());
-    //builder->endOfStatement(true);
-    //builder->blockEnd(true);
-
-    //builder->emitIndent();
-    //builder->appendFormat("if (%s != NULL) ", valueName.c_str());
-    //builder->blockStart();
+    builder->emitIndent();
+    builder->appendFormat("if (%s >= 0) ", valueName.c_str());
+    builder->blockStart();
     builder->emitIndent();
     builder->appendLine("/* run action */");
     table->emitAction(builder, valueName);
@@ -311,10 +286,10 @@ void ControlBodyTranslator::processApply(const P4::ApplyMethod* method) {
 
     builder->blockEnd(true);
     builder->emitIndent();
-    builder->appendFormat("return %s", builder->target->abortReturnCode().c_str());
-    //builder->endOfStatement(true);
+    builder->appendFormat("else return %s", builder->target->abortReturnCode().c_str());
+    builder->endOfStatement(true);
 
-    //builder->blockEnd(true);
+    builder->blockEnd(true);
 }
 
 bool ControlBodyTranslator::preorder(const IR::ExitStatement*) {
@@ -458,8 +433,7 @@ void WP4Control::emitDeclaration(CodeBuilder* builder, const IR::Declaration* de
         builder->emitIndent();
         etype->declare(builder, vd->name, false);
         builder->endOfStatement(true);
-        BUG_CHECK(vd->initializer == nullptr,
-                  "%1%: declarations with initializers not supported", decl);
+        BUG_CHECK(vd->initializer == nullptr, "%1%: declarations with initializers not supported", decl);
         return;
     } else if (decl->is<IR::P4Table>() ||
                decl->is<IR::P4Action>() ||
@@ -474,9 +448,7 @@ void WP4Control::emit(CodeBuilder* builder) {
     builder->emitIndent();
     hitType->declare(builder, hitVariable, false);
     builder->endOfStatement(true);
-    for (auto a : controlBlock->container->controlLocals)
-        emitDeclaration(builder, a);
-
+    for (auto a : controlBlock->container->controlLocals) emitDeclaration(builder, a);
     builder->emitIndent();
     codeGen->setBuilder(builder);
     controlBlock->container->body->apply(*codeGen);
@@ -496,6 +468,10 @@ void WP4Control::emitTableInstances(CodeBuilder* builder) {
 void WP4Control::emitTableInitializers(CodeBuilder* builder) {
     for (auto it : tables)
         it.second->emitInitializer(builder);
+}
+void WP4Control::emitLookup(CodeBuilder* builder) {
+    for (auto it : tables)
+        it.second->emitLookupFunc(builder);
 }
 
 //////////////////////////////////////////////////////////////////////////

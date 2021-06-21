@@ -25,6 +25,11 @@ enum wp4_action {
     CPU
 }
 
+match_kind {
+    max,      // Lower than the value specified.
+    min    // Greater than the value specified.
+}
+
 /* architectural model for WP4Switch packet switch target architecture */
 struct wp4_input {
     bit<32> input_port;// input port of the packet

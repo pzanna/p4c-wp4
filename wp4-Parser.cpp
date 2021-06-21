@@ -190,7 +190,8 @@ bool StateTranslationVisitor::preorder(const IR::SelectCase* selectCase) {
 void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cstring field, unsigned alignment, WP4Type* type) {
     unsigned widthToExtract = dynamic_cast<IHasWidth*>(type)->widthInBits();
     auto program = state->parser->program;
-
+    const char* prefix = nullptr;
+    prefix = dynamic_cast<WP4ScalarType*>(type)->getSignAsString();
 
     unsigned lastBitIndex = widthToExtract + alignment - 1;
     unsigned lastWordIndex = lastBitIndex / 8;
@@ -213,7 +214,8 @@ void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cs
         loadSize = 64;
     }
 
-    //unsigned shift = loadSize - alignment - widthToExtract;
+    if (strcmp(prefix,"u")) helper = "";    // Don't do hton if signed
+    
     unsigned shift = alignment;
     builder->emitIndent();
 
@@ -231,13 +233,22 @@ void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cs
         if (shift != 0)
             builder->appendFormat(" >> %d", shift);
         builder->appendFormat(";");
-    } 
-    //builder->appendFormat("** %d - %d - %d **", loadSize, alignment, widthToExtract);
+    }
+
+    builder->appendFormat("     // ** %d - %d - %d - %s **", loadSize, alignment, widthToExtract, prefix);
+
     if (loadSize <= 8 && shift != 0) {
         builder->newline();
         builder->emitIndent();
         visit(expr);
         builder->appendFormat(".%s >>= %d;", field.c_str(), shift);
+    }
+
+    if (widthToExtract == 48){
+        builder->newline();
+        builder->emitIndent();
+        visit(expr);
+        builder->appendFormat(".%s >>= 16;", field.c_str());
     }
 
     if (widthToExtract != loadSize) {
@@ -259,10 +270,11 @@ void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cs
         builder->emitIndent();
         builder->appendFormat("printk(\"** WP4: %s = %%d **\\n\", ", field.c_str());
         visit(expr);
-        builder->appendFormat(".%s)", field.c_str());
+        builder->appendFormat(".%s);", field.c_str());
     }
 
-    builder->endOfStatement(true);
+    //builder->endOfStatement(false);
+    builder->newline();
     builder->newline();
 }
 
@@ -387,7 +399,6 @@ void WP4Parser::emit(CodeBuilder* builder) {
 
     // Create a synthetic reject state
     builder->emitIndent();
-    //builder->appendFormat("%s: { return %s; }", IR::ParserState::reject.c_str(), builder->target->abortReturnCode().c_str());
     builder->appendFormat("%s: { ", IR::ParserState::reject.c_str());
     builder->newline();
     builder->emitIndent();

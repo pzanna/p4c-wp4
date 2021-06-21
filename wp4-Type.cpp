@@ -117,8 +117,8 @@ void WP4ScalarType::emit(CodeBuilder* builder) {
 }
 
 cstring WP4ScalarType::getAsString() {
-    if (width <= 8)
-        return cstring("u8");
+    auto prefix = isSigned ? "s" : "u";
+    if (width <= 8) return cstring("u8");
     else if (width <= 16)
         return cstring("u16");
     else if (width <= 32)
@@ -129,8 +129,12 @@ cstring WP4ScalarType::getAsString() {
         return cstring("u8*");
 }
 
-void
-WP4ScalarType::declare(CodeBuilder* builder, cstring id, bool asPointer) {
+cstring WP4ScalarType::getSignAsString() {
+    auto prefix = isSigned ? "s" : "u";
+    return prefix;
+}
+
+void WP4ScalarType::declare(CodeBuilder* builder, cstring id, bool asPointer) {
     if (WP4ScalarType::generatesScalar(width)) {
         emit(builder);
         if (asPointer)

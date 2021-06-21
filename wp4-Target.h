@@ -61,9 +61,9 @@ class wp4Target : public Target {
     cstring dataOffset(cstring base) const override { return base; }
     cstring dataEnd(cstring base) const override
     { return cstring("(") + base + " + " + base + "->len)"; }
-    cstring forwardReturnCode() const override { return "2"; }
-    cstring dropReturnCode() const override { return "1"; }
-    cstring abortReturnCode() const override { return "0"; }
+    cstring forwardReturnCode() const override { return "1"; }
+    cstring dropReturnCode() const override { return "0"; }
+    cstring abortReturnCode() const override { return "-1"; }
 };
 
 }  // namespace WP4

@@ -69,6 +69,7 @@ class WP4Control : public WP4Object {
     void emitTableTypes(CodeBuilder* builder);
     void emitTableInitializers(CodeBuilder* builder);
     void emitTableInstances(CodeBuilder* builder);
+    void emitLookup(CodeBuilder* builder);
     virtual bool build();
     WP4Table* getTable(cstring name) const {
         auto result = ::get(tables, name);

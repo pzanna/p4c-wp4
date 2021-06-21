@@ -35,13 +35,8 @@ void wp4Target::emitIncludes(Util::SourceCodeBuilder* builder) const {
 }
 
 void wp4Target::emitModule(Util::SourceCodeBuilder* builder) const {
+    builder->newline();
     builder->append(
-         "static int __init wp4_init(void) {\n"
-         "   printk(KERN_INFO \"WP4: Loading WP4 LKM!\\n\");\n"
-         "   table_init();\n"
-         "   return 0;\n"
-         "}\n"
-         "\n"
          "static void __exit wp4_exit(void) {\n"
          "   printk(KERN_INFO \"WP4: Removing WP4 LKM!\\n\");\n"
          "   table_exit();\n"
@@ -58,31 +53,35 @@ void wp4Target::emitTableLookup(Util::SourceCodeBuilder* builder, cstring key, U
 }
 
 void wp4Target::emitTableDecl(Util::SourceCodeBuilder *builder, cstring tblName, cstring keyType, cstring valueType, unsigned size) const {
-    builder->append("struct ");
-    builder->appendFormat("wp4_map_def %s = ", tblName);
-    builder->spc();
+    builder->append("extern struct wp4_map_def *flow_table;");
+    builder->newline();
+    builder->newline();
+
+    builder->append("static int __init wp4_init(void) ");
     builder->blockStart();
+    builder->emitIndent();
+    builder->append("printk(KERN_INFO \"WP4: Loading WP4 LKM!\\n\");\n");
+    builder->emitIndent();
+    builder->append("table_init();\n");
 
     builder->emitIndent();
-    builder->appendFormat(".key_size = sizeof(%s),", keyType);
+    builder->appendFormat("flow_table->key_size = sizeof(%s);", keyType);
     builder->newline();
-
     builder->emitIndent();
-    builder->appendFormat(".value_size = sizeof(%s),", valueType);
-
+    builder->appendFormat("flow_table->value_size = sizeof(%s);", valueType);
     builder->newline();
-
     builder->emitIndent();
-    builder->appendFormat(".max_entries = %d,", size);
+    builder->appendFormat("flow_table->max_entries = %d;", size);
     builder->newline();
-
     builder->emitIndent();
-    builder->append(".last_entry = 0,");
+    builder->append("flow_table->last_entry = 0;");
     builder->newline();
-
+    builder->emitIndent();
+    builder->append("return 0;");
+    builder->newline();
     builder->blockEnd(false);
-    builder->endOfStatement(true);
     }
+
 
 }  // namespace WP4
 

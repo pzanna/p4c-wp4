@@ -59,8 +59,8 @@ void dump_rx_packet(u8 *ptr)
         *(ptr + i + 1), *(ptr + i + 2) , *(ptr + i + 3) , *(ptr + i + 4), *(ptr + i + 5), *(ptr + i + 6), *(ptr + i + 7),
         *(ptr + i + 8), *(ptr + i + 9), *(ptr + i + 10) , *(ptr + i + 11) , *(ptr + i + 12), *(ptr + i + 13), *(ptr + i + 14), *(ptr + i + 15));
     printk("***********************************************\n");
-    flow_table->last_entry++;
-    printk("iLastFlow %d\n", flow_table->last_entry);
+    //flow_table->last_entry++;
+    //printk("iLastFlow %d\n", flow_table->last_entry);
 }
 
 
@@ -236,14 +236,6 @@ void table_exit(void)
     return;
 }
 
-
-int wp4_table_lookup(struct swtch_lookup_tbl_key *key)
-{
-    printk("FrameType %d - SubType - %d\n", key->headers_frameCtrl_frameType, key->headers_frameCtrl_subType);
-    return 2;
-}
-
-
 /*
  *  Packet poll request
  *
@@ -251,35 +243,27 @@ int wp4_table_lookup(struct swtch_lookup_tbl_key *key)
  *  @param dev - pointer to the device.
  *
  */
-struct packet_out CPU_Port(int buffer_id)
+void to_cpu(struct Headers_t headers)
 {
-    struct packet_out pkt_out;
+    int x;
+    int buffer_no =-1;
 
-    pkt_out.inport = 0;
-    pkt_out.outport = -1;
-    pkt_out.skb = NULL;
-
-    if(pk_buffer->buffer[buffer_id].type == PB_PENDING || pk_buffer->buffer[buffer_id].type == PB_PACKETIN) pk_buffer->buffer[buffer_id].age++;
-    
-    // Buffer entry has timed out so remove entry
-    if (pk_buffer->buffer[buffer_id].age > 4)
-    {
-        pk_buffer->buffer[buffer_id].age = 0;
-        pk_buffer->buffer[buffer_id].type = PB_EMPTY;
-        printk("WP4: Packet Buffer %d timed out!\n", buffer_id);
-        kfree_skb(pk_buffer->buffer[buffer_id].skb);
-        return pkt_out;
-    }
-
-    // Buffer entry is a PACKET OUT so return details
-    if(pk_buffer->buffer[buffer_id].type == PB_PACKETOUT)
-    {
-        pkt_out.skb = pk_buffer->buffer[buffer_id].skb;
-        pkt_out.inport = pk_buffer->buffer[buffer_id].inport;
-        pkt_out.outport = pk_buffer->buffer[buffer_id].outport;
-        printk("WP4: Packet out found in buffer %d, skb = 0x%p, outport = 0x%x, inport = %d\n", buffer_id, (void*)pkt_out.skb, pkt_out.outport, pkt_out.inport);
-        pk_buffer->buffer[buffer_id].type = PB_EMPTY;     
-        return pkt_out;
-    }
-    return pkt_out;
+    for(x=0;x<(PACKET_BUFFER);x++)
+        {
+            printk("WP4: Buffer %d is set as %d\n", x, pk_buffer->buffer[x].type);
+            if(pk_buffer->buffer[x].type == PB_EMPTY) 
+            {
+                buffer_no = x;
+                break;
+            }
+        }
+        if (buffer_no == -1 ) 
+        {
+            printk("WP4: All buffer are full!\n");
+            return;   // All buffers are full
+        }
+        memcpy(&pk_buffer->buffer[buffer_no].buffer, &headers, sizeof(struct Headers_t));
+        pk_buffer->buffer[buffer_no].type = PB_PENDING;
+        printk("WP4: Headers loaded into buffer %d \n", buffer_no);         
+        return;
 }

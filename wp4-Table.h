@@ -70,6 +70,7 @@ private:
     void emitKey(CodeBuilder* builder, cstring keyName);
     void emitAction(CodeBuilder* builder, cstring valueName);
     void emitInitializer(CodeBuilder* builder);
+    void emitLookupFunc(CodeBuilder* builder);
 };
 
 }  // namespace WP4

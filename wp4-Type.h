@@ -100,7 +100,8 @@ class WP4ScalarType : public WP4Type, public IHasWidth {
     unsigned bytesRequired() const { return ROUNDUP(width, 8); }
     unsigned alignment() const;
     void emit(CodeBuilder* builder) override;
-    cstring getAsString();    
+    cstring getAsString();
+    cstring getSignAsString();     
     void declare(CodeBuilder* builder, cstring id, bool asPointer) override;
     void emitInitializer(CodeBuilder* builder) override
     { builder->append("0"); }
