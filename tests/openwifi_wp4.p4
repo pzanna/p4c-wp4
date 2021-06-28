@@ -10,14 +10,14 @@ typedef bit<9>  egressSpec_t;
 
 typedef bit<48> macAddr_t;  // MAC Address
 
-#define RF_FEATURE 1234
+// Signed (int) header values will not be converted from network to host byte order 
 
 header rfFeatures_t {
-    bit<64>     timestamp;   // Frame Timestamp
-    bit<16>     rssi;        // RSSI (dB)
-    bit<16>     blank;       // Unusedß
-    bit<16>     len;         // Length
-    bit<16>     rate_idx;    // Rate Index
+    int<64>     timestamp;   // Frame Timestamp
+    int<16>     rssi;        // RSSI (dB)
+    int<16>     blank;       // Unusedß
+    int<16>     len;         // Length
+    int<16>     rate_idx;    // Rate Index
     int<32>     phaseOffset; // AUX 1
     int<32>     pilotOffset; // Frequency Offset (kHz)
     int<32>     magSq;       // AUX 3
@@ -132,6 +132,8 @@ control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out
             Pass_action;
             CPU_action;
         }
+
+        default_action = CPU_action;
 
     }
 

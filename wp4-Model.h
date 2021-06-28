@@ -24,13 +24,6 @@ limitations under the License.
 
 namespace WP4 {
 
-struct TableImpl_Model : public ::Model::Extern_Model {
-    explicit TableImpl_Model(cstring name) :
-            Extern_Model(name),
-            size("size") {}
-    ::Model::Elem size;
-};
-
 struct Switch_Model : public ::Model::Elem {
     Switch_Model() : Elem("wp4"),
                      wp4_parser("prs"), wp4_switch("swtch"), wp4_deparser("deprs") {}
@@ -43,18 +36,16 @@ struct Switch_Model : public ::Model::Elem {
 class WP4Model : public ::Model::Model {
  protected:
     WP4Model() : Model("0.1"),
-                  //hash_table("hash_table"),
-                  //tableImplProperty("implementation"),
                   CPacketName("p_uc_data"),
                   packet("packet", P4::P4CoreLibrary::instance.packetIn, 0),
-                  wp4_switch(), counterIndexType("u32"), counterValueType("u32")
+                  wp4_switch(),
+                  counterIndexType("u32"),
+                  counterValueType("u32")
     {}
 
  public:
     static WP4Model instance;
     static cstring reservedPrefix;
-    //TableImpl_Model        hash_table;
-    //::Model::Elem          tableImplProperty;
     ::Model::Elem          CPacketName;
     ::Model::Param_Model   packet;
     Switch_Model           wp4_switch;

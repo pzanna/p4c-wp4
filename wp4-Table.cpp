@@ -398,11 +398,10 @@ void WP4Table::emitAction(CodeBuilder* builder, cstring valueName) {
         builder->blockEnd(true);
         builder->emitIndent();
         builder->appendLine("break;");
-        builder->newline();
     }
 
     builder->emitIndent();
-    builder->appendFormat("default: return %s", builder->target->forwardReturnCode().c_str());
+    builder->appendFormat("default: return %s", builder->target->abortReturnCode().c_str());
     builder->endOfStatement(true);
     builder->blockEnd(true);
 }
@@ -457,7 +456,6 @@ void WP4Table::emitInitializer(CodeBuilder* builder) {
     builder->newline();
 
     builder->emitIndent();
-    //builder->target->emitTableUpdate(builder, defaultTable, program->zeroKey, "&" + value);
     builder->endOfStatement(true);
     builder->blockEnd(true);
 
@@ -533,11 +531,20 @@ void WP4Table::emitLookupFunc(CodeBuilder* builder) {
     builder->blockEnd(false);
     builder->newline();
     builder->emitIndent();
-    builder->append("return -1;    // Return no matches");
+    const IR::P4Table* t = table->container;
+    const IR::Expression* defaultAction = t->getDefaultAction();
+    BUG_CHECK(defaultAction->is<IR::MethodCallExpression>(), "%1%: expected an action call", defaultAction);
+    auto mce = defaultAction->to<IR::MethodCallExpression>();
+    auto mi = P4::MethodInstance::resolve(mce, program->refMap, program->typeMap);
+    auto ac = mi->to<P4::ActionCall>();
+    BUG_CHECK(ac != nullptr, "%1%: expected an action call", mce);
+    auto action = ac->action;
+    cstring name = generateActionName(action);
+    builder->appendFormat("return %s;   // Return default action for a table miss", name);
+
     builder->newline();
     builder->blockEnd(false);
     builder->newline();
-
 }
 
 
