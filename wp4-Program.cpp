@@ -138,7 +138,7 @@ void WP4Program::emitH(CodeBuilder* builder, cstring) {
     builder->newline();
     builder->appendLine("#define htonll(x) ((((uint64_t)htonl(x)) << 32) + htonl((x) >> 32))");
     builder->newline();
-    builder->appendLine("#define PACKET_BUFFER_SIZE 1024");
+    builder->appendLine("#define TABLE_SIZE 1024");
     builder->newline();
     builder->appendLine("#include <linux/types.h>");
     builder->newline();
@@ -211,6 +211,7 @@ void WP4Program::emitPreamble(CodeBuilder* builder) {
     builder->emitIndent();
     builder->appendLine("#define WP4_MASK(t, w) ((((t)(1)) << (w)) - (t)1)");
     builder->appendLine("#define BYTES(w) ((w) / 8)");
+    builder->appendLine("#define MAX_VALUE(x) ( ~ 0)");
     builder->newline();
 }
 
@@ -223,9 +224,9 @@ void WP4Program::emitLocalVariables(CodeBuilder* builder) {
     builder->appendFormat("u8 *%s = %s;", packetStartVar, model.CPacketName.str());
     builder->newline();
     builder->newline();
-    builder->emitIndent();
-    builder->appendFormat("dump_rx_packet(%s);", packetStartVar);
-    builder->newline();
+    //builder->emitIndent();
+    //builder->appendFormat("dump_rx_packet(%s);", packetStartVar);
+    //builder->newline();
     builder->emitIndent();
     builder->appendLine("printk(\"** WP4: Packet Received, size = %d **\\n\", wp4_ul_size);");
 }

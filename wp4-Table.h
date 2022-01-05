@@ -71,6 +71,7 @@ private:
     void emitAction(CodeBuilder* builder, cstring valueName);
     void emitInitializer(CodeBuilder* builder);
     void emitLookupFunc(CodeBuilder* builder);
+    void emitLCSFunc(CodeBuilder* builder);
 };
 
 }  // namespace WP4

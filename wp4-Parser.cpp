@@ -265,6 +265,7 @@ void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cs
     builder->appendFormat("%s += %d;", program->offsetVar.c_str(), widthToExtract);
 
     /* Printk headers values that are 8 bytes or less */
+    /*
     if (loadSize <= 8) {
         builder->newline();
         builder->emitIndent();
@@ -272,8 +273,7 @@ void StateTranslationVisitor::compileExtractField(const IR::Expression* expr, cs
         visit(expr);
         builder->appendFormat(".%s);", field.c_str());
     }
-
-    //builder->endOfStatement(false);
+    */
     builder->newline();
     builder->newline();
 }

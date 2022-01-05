@@ -26,6 +26,7 @@ enum wp4_action {
 }
 
 match_kind {
+    class,      // The Class of a LCS match.
     max,      // Lower than the value specified.
     min    // Greater than the value specified.
 }
@@ -38,6 +39,9 @@ struct wp4_input {
 struct wp4_output {
     wp4_action output_action;  // output action for packet
 }
+
+/* Function to send headers to Control Plane buffer */
+//extern void to_cpu(in H headers);
 
 parser wp4_parse<H>(packet_in packet, out H headers);
 control wp4_switch<H>(inout H headers, in wp4_input imd, out wp4_output omd);

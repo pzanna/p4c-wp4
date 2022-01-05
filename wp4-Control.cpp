@@ -47,53 +47,59 @@ bool ControlBodyTranslator::preorder(const IR::PathExpression* expression) {
 }
 
 void ControlBodyTranslator::processFunction(const P4::ExternFunction* function) {
-    ::error("%1%: Not supported", function->method);
+    if (function->method->name.name == "to_cpu") {
+        builder->appendFormat("to_cpu(headers)");
+        return;
+        } else {
+        ::error("%1%: Not supported", function->method);
+    }
 }
 
 bool ControlBodyTranslator::preorder(const IR::MethodCallExpression* expression) {
-    builder->emitIndent();
-    builder->append("/* ");
-    visit(expression->method);
-    builder->append("(");
-    bool first = true;
-    for (auto a  : *expression->arguments) {
-        if (!first)
-            builder->append(", ");
-        first = false;
-        visit(a);
-    }
-    builder->append(")");
-    builder->append("*/");
-    builder->newline();
+    //builder->emitIndent();
+    //builder->append("/* ");
+    //visit(expression->method);
+    //builder->append("(");
+    //bool first = true;
+    //for (auto a  : *expression->arguments) {
+    //    if (!first)
+    //        builder->append(", ");
+    //    first = false;
+    //    visit(a);
+    //}
+    //builder->append(")");
+    //builder->append("*/");
+    //builder->newline();
 
     auto mi = P4::MethodInstance::resolve(expression, control->program->refMap, control->program->typeMap);
     auto apply = mi->to<P4::ApplyMethod>();
     if (apply != nullptr) {
         processApply(apply);
+        builder->append("****");
         return false;
     }
     auto ef = mi->to<P4::ExternFunction>();
     if (ef != nullptr) {
-        //processFunction(ef);
+        processFunction(ef);
         return false;
     }
-    auto bim = mi->to<P4::BuiltInMethod>();
-    if (bim != nullptr) {
-        builder->emitIndent();
-        if (bim->name == IR::Type_Header::isValid) {
-            visit(bim->appliedTo);
-            builder->append(".wp4_valid");
-            return false;
-        } else if (bim->name == IR::Type_Header::setValid) {
-            visit(bim->appliedTo);
-            builder->append(".wp4_valid = true");
-            return false;
-        } else if (bim->name == IR::Type_Header::setInvalid) {
-            visit(bim->appliedTo);
-            builder->append(".wp4_valid = false");
-            return false;
-        }
-    }
+    //auto bim = mi->to<P4::BuiltInMethod>();
+    //if (bim != nullptr) {
+    //    builder->emitIndent();
+    //    if (bim->name == IR::Type_Header::isValid) {
+    //        visit(bim->appliedTo);
+    //        builder->append(".wp4_valid");
+    //        return false;
+    //    } else if (bim->name == IR::Type_Header::setValid) {
+    //        visit(bim->appliedTo);
+    //        builder->append(".wp4_valid = true");
+    //        return false;
+    //    } else if (bim->name == IR::Type_Header::setInvalid) {
+    //        visit(bim->appliedTo);
+    //        builder->append(".wp4_valid = false");
+    //        return false;
+    //    }
+    //}
     auto ac = mi->to<P4::ActionCall>();
     if (ac != nullptr) {
         // Action arguments have been eliminated by the mid-end.

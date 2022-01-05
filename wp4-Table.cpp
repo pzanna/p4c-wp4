@@ -181,37 +181,92 @@ void WP4Table::emitKeyType(CodeBuilder* builder) {
             builder->append(" */");
             builder->newline();
 
-            if (matchType->name.name != P4::P4CoreLibrary::instance.exactMatch.name && matchType->name.name != "min" && matchType->name.name != "max")
+            if (matchType->name.name != P4::P4CoreLibrary::instance.exactMatch.name && matchType->name.name != "class" && matchType->name.name != "min" && matchType->name.name != "max")
                 ::error("Match of type %1% not supported", c->matchType);
         }
     }
+
+    builder->blockEnd(false);
+    builder->endOfStatement(true);
+    builder->newline();
+
+    /** Add the struct for if a feature is is in scope, i.e. "Don't Care" **/
+    builder->emitIndent();
+    builder->appendFormat("struct rule_scope ");
+    builder->blockStart();
+
+    if (keyGenerator != nullptr) {
+        // Use this to order elements by size
+        std::multimap<size_t, const IR::KeyElement*> ordered;
+        unsigned fieldNumber = 0;
+        for (auto c : keyGenerator->keyElements) {
+            auto type = program->typeMap->getType(c->expression);
+            auto wp4Type = WP4TypeFactory::instance->create(type);
+            cstring fieldName = c->expression->toString().replace('.', '_');
+            if (!wp4Type->is<IHasWidth>()) {
+                ::error("%1%: illegal type %2% for key field", c, type);
+                return;
+            }
+            unsigned width = wp4Type->to<IHasWidth>()->widthInBits();
+            ordered.emplace(width, c);
+            keyTypes.emplace(c, wp4Type);
+            keyFieldNames.emplace(c, fieldName);
+            fieldNumber++;
+        }
+
+        // Emit key in decreasing order size - this way there will be no gaps
+        for (auto it = ordered.rbegin(); it != ordered.rend(); ++it) {
+            auto c = it->second;
+
+            auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+            auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+
+            builder->emitIndent();
+            builder->append("u8 ");
+            cstring fieldName = ::get(keyFieldNames, c);
+            builder->appendFormat("%s_%s;", fieldName, matchType->name.name);
+            builder->newline();
+
+            if (matchType->name.name != P4::P4CoreLibrary::instance.exactMatch.name && matchType->name.name != "class" && matchType->name.name != "min" && matchType->name.name != "max")
+                ::error("Match of type %1% not supported", c->matchType);
+        }
+    }
+    
     builder->blockEnd(false);
     builder->endOfStatement(true);
 
-    // definition of counters
+    // definition of rule metadata
     builder->newline();
-    builder->append("struct flows_counter");
+    builder->append("struct rule_metadata");
     builder->spc();
     builder->blockStart();
 
     builder->emitIndent();
-    builder->append("u64 hitCount;");
+    builder->append("u8 valid;");
     builder->newline();
 
     builder->emitIndent();
-    builder->append("u64 bytes;");
+    builder->append("u64 numerosity;");
     builder->newline();
 
     builder->emitIndent();
-    builder->append("u32 duration;");
+    builder->append("u64 match_count;");
     builder->newline();
 
     builder->emitIndent();
-    builder->append("u8 active;");
+    builder->append("u64 correct_count;");
     builder->newline();
 
     builder->emitIndent();
-    builder->append("int lastmatch;");
+    builder->append("u64 accuracy;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("u64 fitness;");
+    builder->newline();
+
+    builder->emitIndent();
+    builder->append("u64 age;");
     builder->newline();
 
     builder->blockEnd(false);
@@ -241,18 +296,23 @@ void WP4Table::emitKeyType(CodeBuilder* builder) {
     builder->newline();
 
     builder->emitIndent();
+    builder->append("time_t last_lookup;");
+    builder->newline();
+
+    builder->emitIndent();
     builder->appendFormat("struct %s key[%d];", keyTypeName.c_str(), size);
     builder->newline();
 
     builder->emitIndent();
-    //builder->append("enum ");
-    //builder->append(actionEnumName);
-    //builder->spc();
-    builder->appendFormat("u8 action[%d];", size);
+    builder->appendFormat("struct rule_scope scope[%d];", size);
     builder->newline();
 
     builder->emitIndent();
-    builder->appendFormat("struct flows_counter flow_counters[%d];", size);
+    builder->appendFormat("struct rule_metadata rule_data[%d];", size);
+    builder->newline();
+
+    builder->emitIndent();
+    builder->appendFormat("u8 action[%d];", size);
     builder->newline();
 
     builder->blockEnd(false);
@@ -470,6 +530,7 @@ void WP4Table::emitInitializer(CodeBuilder* builder) {
     }
 }
 
+/** Generic version of the table lookup fucntion **/
 void WP4Table::emitLookupFunc(CodeBuilder* builder) {
     cstring keyName = "key";
     builder->newline();
@@ -477,6 +538,23 @@ void WP4Table::emitLookupFunc(CodeBuilder* builder) {
     builder->spc();
     builder->blockStart();
     builder->newline();
+
+    // Check if it will be a LCS type lookup function
+    auto imatch = 0;
+    for (auto c : keyGenerator->keyElements) {
+        imatch++;
+        //cstring fieldName = ::get(keyFieldNames, c);
+        auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+        auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+        if (matchType->name.name == "class" && imatch != 1) {
+        ::error(ErrorType::ERR_UNSUPPORTED_ON_TARGET, "%1%: Class match type must be first key.",imatch);
+        }
+        if (matchType->name.name == "class" && imatch == 1) {
+            emitLCSFunc(builder);
+            return;
+        }
+    }
+
 
     builder->emitIndent();
     builder->append("int i;");
@@ -490,7 +568,6 @@ void WP4Table::emitLookupFunc(CodeBuilder* builder) {
     /* Print out values */
     for (auto c : keyGenerator->keyElements) {
         cstring fieldName = ::get(keyFieldNames, c);
-        //cstring fieldName2 = c->expression->toString();
         auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
         auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
         CHECK_NULL(fieldName);
@@ -524,6 +601,7 @@ void WP4Table::emitLookupFunc(CodeBuilder* builder) {
         builder->append(" continue;    // No match");
         builder->newline();
     }
+
     builder->newline();
     builder->emitIndent();
     builder->append("return flow_table->action[i];    // Return matched action");
@@ -547,5 +625,83 @@ void WP4Table::emitLookupFunc(CodeBuilder* builder) {
     builder->newline();
 }
 
+/** LCS version of the table lookup fucntion **/
+void WP4Table::emitLCSFunc(CodeBuilder* builder) {
+    cstring keyName = "key";
+
+    builder->emitIndent();
+    builder->append("/* LCS Prediction Algorithm */");
+    builder->newline();
+    builder->newline();
+    builder->emitIndent();
+    builder->append("struct timespec ts_time;");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("time_t ct;");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("int i;");
+    builder->newline();
+    builder->newline();
+    builder->emitIndent();
+    builder->append("for (i=0;i<flow_table->last_entry;i++)");
+    builder->newline();
+    builder->emitIndent();
+    builder->blockStart();
+
+    /* Print out values */
+    for (auto c : keyGenerator->keyElements) {
+        cstring fieldName = ::get(keyFieldNames, c);
+        auto mtdecl = program->refMap->getDeclaration(c->matchType->path, true);
+        auto matchType = mtdecl->getNode()->to<IR::Declaration_ID>();
+        CHECK_NULL(fieldName);
+        /* Print Key Values */
+        builder->emitIndent(); 
+        builder->appendFormat("printk(\"%s_%s:", fieldName.c_str(), matchType->name.name);
+        builder->append(" %d  - %d (%d)\\n\"");
+        builder->appendFormat(", %s->%s_%s, flow_table->%s[i].%s_%s, MAX_VALUE(%s->%s_%s));", keyName.c_str(), fieldName.c_str(), matchType->name.name, keyName.c_str(), fieldName.c_str(), matchType->name.name, keyName.c_str(), fieldName.c_str(), matchType->name.name);  // flow_table->keyName->fieldName - key->headers_mac80211_Addr2
+        builder->newline();
+
+    }
+    builder->emitIndent();
+    builder->append("printk(\"Action = %d\\n\", flow_table->action[i]);");
+    builder->newline();
+    builder->emitIndent();
+    builder->newline();
+    builder->blockEnd(false);
+
+    builder->newline();
+    builder->emitIndent();
+    builder->append("getnstimeofday(&ts_time);");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("ct = (ts_time.tv_sec * 1000) + (ts_time.tv_nsec / 1000000);");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("int time_delta = ct - flow_table->last_lookup;");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("printk(\"current_time = %lu - time delta = %u\\n\", ct, time_delta);");
+    builder->newline();
+    builder->emitIndent();
+    builder->append("flow_table->last_lookup = ct;");
+
+    builder->newline();
+    builder->emitIndent();
+    const IR::P4Table* t = table->container;
+    const IR::Expression* defaultAction = t->getDefaultAction();
+    BUG_CHECK(defaultAction->is<IR::MethodCallExpression>(), "%1%: expected an action call", defaultAction);
+    auto mce = defaultAction->to<IR::MethodCallExpression>();
+    auto mi = P4::MethodInstance::resolve(mce, program->refMap, program->typeMap);
+    auto ac = mi->to<P4::ActionCall>();
+    BUG_CHECK(ac != nullptr, "%1%: expected an action call", mce);
+    auto action = ac->action;
+    cstring name = generateActionName(action);
+    builder->appendFormat("return %s;   // Return default action for a table miss", name);
+
+    builder->newline();
+    builder->blockEnd(false);
+    builder->newline();
+}
 
 }  // namespace WP4

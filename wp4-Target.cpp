@@ -26,6 +26,8 @@ void wp4Target::emitIncludes(Util::SourceCodeBuilder* builder) const {
         "#include <linux/init.h>      // included for __init and __exit macros\n"
         "#include <linux/fs.h>\n"
         "#include <linux/debugfs.h>\n"
+        "#include <linux/timekeeping.h>\n"
+        "#include <linux/time.h>\n"
         "#include <linux/slab.h>\n"
         "#include <linux/mm.h>\n"  
         "#include <linux/skbuff.h>\n"

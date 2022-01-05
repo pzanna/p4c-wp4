@@ -57,7 +57,7 @@ struct Headers_t {
 extern void to_cpu(in Headers_t headers);
 
 /*************************************************************************
-*********************** P A R S E R  ***********************************
+*********************** P A R S E R  *************************************
 *************************************************************************/
 
 parser prs(packet_in p, out Headers_t headers) {
@@ -72,23 +72,8 @@ parser prs(packet_in p, out Headers_t headers) {
     state prot_ver {
         p.extract(headers.frameCtrl);
         transition select(headers.frameCtrl.protoVer) {
-        0x00 : frame_type;
-        default : reject;
-        }
-    }
-
-    state frame_type {
-        transition select(headers.frameCtrl.frameType) {
         0x00 : mac80211;
-        0x02 : data;
-        default : accept;
-        }
-    }
-
-    state data {
-        transition select(headers.frameCtrl.subType) {
-        0x04 : accept;
-        default : mac80211;
+        default : reject;
         }
     }
 
@@ -117,14 +102,21 @@ control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out
 
     table lookup_tbl {
 
-        size = 1024;
+        size = 512;
 
         key = {
-            headers.mac80211.Addr2 : exact;
+            headers.mac80211.Addr2 : class;
             headers.frameCtrl.frameType : exact;
             headers.frameCtrl.subType : exact;
+            headers.rfFeatures.rate_idx : exact;
+            headers.rfFeatures.rssi : min;
+            headers.rfFeatures.rssi : max;
             headers.rfFeatures.phaseOffset : min;
             headers.rfFeatures.phaseOffset : max;
+            headers.rfFeatures.pilotOffset : min;
+            headers.rfFeatures.pilotOffset : max;
+            headers.rfFeatures.magSq : min;
+            headers.rfFeatures.magSq : max;
         }
 
         actions = {
@@ -133,12 +125,17 @@ control swtch(inout Headers_t headers, in wp4_input wp4in, out wp4_output wp4out
             CPU_action;
         }
 
-        default_action = CPU_action;
+        default_action = Pass_action;    // Action to perform for a miss in a exact match table or a predictive match in a LCS table.
 
     }
 
+    /* If it is not a deauth or disassoc management frame send the headers to the CPU otherwise do a table lookup.*/
     apply {
-        lookup_tbl.apply();
+        if(headers.frameCtrl.frameType == 0x0 && (headers.frameCtrl.subType == 0xA || headers.frameCtrl.subType == 0xC)) {    
+            lookup_tbl.apply();
+        } else {
+            CPU_action();
+        }
     }
 
 }
